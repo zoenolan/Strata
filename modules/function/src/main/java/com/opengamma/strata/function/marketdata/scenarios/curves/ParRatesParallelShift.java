@@ -54,7 +54,10 @@ public final class ParRatesParallelShift implements Perturbation<ParRates>, Immu
 
   /**
    * Returns a perturbation that scales each rate in a set of par rates by the same factor.
-   * TODO blurb about what the rate means
+   * <p>
+   * The shift amount is interpreted as a decimal percentage. For example, a shift amount of 0.1 is a
+   * shift of +10% which multiplies the value by 1.1. A shift amount of -0.2 is a shift of -20%
+   * which multiplies the value by 0.8
    *
    * @param shiftAmount  the amount to add to each rate
    * @return a perturbation that adds a fixed amount to each rate in a set of par rates

@@ -13,7 +13,7 @@ public enum ShiftType {
   /**
    * A relative shift where the value is scaled by the shift amount.
    * <p>
-   * The shift amount is interpreted as a percentage. For example, a shift amount of 0.1 is a
+   * The shift amount is interpreted as a decimal percentage. For example, a shift amount of 0.1 is a
    * shift of +10% which multiplies the value by 1.1. A shift amount of -0.2 is a shift of -20%
    * which multiplies the value by 0.8
    * <p>
