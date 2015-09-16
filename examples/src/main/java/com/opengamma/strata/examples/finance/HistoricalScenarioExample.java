@@ -162,8 +162,8 @@ public class HistoricalScenarioExample {
       for (RateCurveId curveId : curveIds) {
 
         // get the curve from this scenario date and the previous scenario date
-        NodalCurve curve = (NodalCurve) curves.get(curveId);
-        NodalCurve previousCurve = (NodalCurve) previousCurves.get(curveId);
+        NodalCurve curve = curves.get(curveId).toNodalCurve();
+        NodalCurve previousCurve = previousCurves.get(curveId).toNodalCurve();
 
         // obtain the curve node metadata - this is used to identify a node to apply a perturbation to
         List<CurveParameterMetadata> curveNodeMetadata = curve.getMetadata().getParameterMetadata().get();

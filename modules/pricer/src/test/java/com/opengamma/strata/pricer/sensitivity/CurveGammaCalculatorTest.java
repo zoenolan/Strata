@@ -20,12 +20,10 @@ import static com.opengamma.strata.collect.Guavate.toImmutableMap;
 import static org.testng.Assert.assertEquals;
 
 import java.time.LocalDate;
-import java.util.Map;
 import java.util.function.Function;
 
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.opengamma.analytics.math.differentiation.FiniteDifferenceType;
 import com.opengamma.strata.basics.PayReceive;
@@ -33,11 +31,11 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.index.IborIndex;
-import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.StubConvention;
 import com.opengamma.strata.basics.value.ValueSchedule;
+import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.finance.rate.swap.FixedRateCalculation;
 import com.opengamma.strata.finance.rate.swap.IborRateCalculation;
 import com.opengamma.strata.finance.rate.swap.NotionalSchedule;
@@ -52,6 +50,8 @@ import com.opengamma.strata.market.curve.NodalCurve;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
+import com.opengamma.strata.market.value.DiscountFactors;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.datasets.RatesProviderDataSets;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.RatesProvider;
@@ -70,16 +70,11 @@ public class CurveGammaCalculatorTest {
       RatesProviderDataSets.TIMES_1,
       RatesProviderDataSets.RATES_1_1,
       RatesProviderDataSets.INTERPOLATOR);
-  private static final Map<Currency, Curve> USD_SINGLE_CCY_MAP = ImmutableMap.of(USD, USD_SINGLE_CURVE);
-  private static final Map<Index, Curve> USD_SINGLE_IND_MAP = ImmutableMap.of(
-      USD_FED_FUND, USD_SINGLE_CURVE,
-      USD_LIBOR_3M, USD_SINGLE_CURVE,
-      USD_LIBOR_6M, USD_SINGLE_CURVE);
-  private static final ImmutableRatesProvider SINGLE = ImmutableRatesProvider.builder()
-      .valuationDate(VAL_DATE_2015_04_27)
-      .discountCurves(USD_SINGLE_CCY_MAP)
-      .indexCurves(USD_SINGLE_IND_MAP)
-      .timeSeries(RatesProviderDataSets.TIME_SERIES)
+  private static final ImmutableRatesProvider SINGLE = ImmutableRatesProvider.builder(VAL_DATE_2015_04_27)
+      .discountCurve(USD, USD_SINGLE_CURVE)
+      .overnightIndexCurve(USD_FED_FUND, USD_SINGLE_CURVE, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_3M, USD_SINGLE_CURVE, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_6M, USD_SINGLE_CURVE, LocalDateDoubleTimeSeries.empty())
       .build();
   private static final Currency SINGLE_CURRENCY = Currency.USD;
   // Conventions
@@ -99,7 +94,8 @@ public class CurveGammaCalculatorTest {
   //-------------------------------------------------------------------------
   public void semiParallelGammaValue() {
     ImmutableRatesProvider provider = SINGLE;
-    NodalCurve curve = Iterables.getOnlyElement(provider.getDiscountCurves().values()).toNodalCurve();
+    DiscountFactors df = Iterables.getOnlyElement(provider.getDiscountFactors().values());
+    NodalCurve curve = ((ZeroRateDiscountFactors) df).getCurve().toNodalCurve();
     Currency curveCurrency = SINGLE_CURRENCY;
     double[] y = curve.getYValues();
     int nbNode = y.length;
@@ -116,9 +112,11 @@ public class CurveGammaCalculatorTest {
           }
           Curve curveBumped = curve.withYValues(yBumped[pmi][pmP]);
           ImmutableRatesProvider providerBumped = provider.toBuilder()
-              .discountCurves(provider.getDiscountCurves().keySet().stream()
+              .discountCurves(provider.getDiscountFactors().keySet().stream()
                   .collect(toImmutableMap(Function.identity(), k -> curveBumped)))
-              .indexCurves(provider.getIndexCurves().keySet().stream()
+              .indexCurves(provider.getIborIndexRates().keySet().stream()
+                  .collect(toImmutableMap(Function.identity(), k -> curveBumped)))
+              .indexCurves(provider.getOvernightIndexRates().keySet().stream()
                   .collect(toImmutableMap(Function.identity(), k -> curveBumped)))
               .build();
           pv[pmi][pmP] = PRICER_SWAP.presentValue(SWAP, providerBumped).getAmount(USD).getAmount();
@@ -140,7 +138,8 @@ public class CurveGammaCalculatorTest {
   // Checks that different finite difference types and shifts give similar results.
   public void semiParallelGammaCoherency() {
     ImmutableRatesProvider provider = SINGLE;
-    NodalCurve curve = Iterables.getOnlyElement(provider.getDiscountCurves().values()).toNodalCurve();
+    DiscountFactors df = Iterables.getOnlyElement(provider.getDiscountFactors().values());
+    NodalCurve curve = ((ZeroRateDiscountFactors) df).getCurve().toNodalCurve();
     Currency curveCurrency = SINGLE_CURRENCY;
     double toleranceCoherency = 1.0E+5;
     CurveGammaCalculator calculatorForward5 = new CurveGammaCalculator(FiniteDifferenceType.FORWARD, FD_SHIFT);
@@ -167,12 +166,17 @@ public class CurveGammaCalculatorTest {
   }
 
   //-------------------------------------------------------------------------
-  private static CurveCurrencyParameterSensitivity buildSensitivities(NodalCurve bumpedCurve, ImmutableRatesProvider ratesProvider) {
+  private static CurveCurrencyParameterSensitivity buildSensitivities(
+      NodalCurve bumped,
+      ImmutableRatesProvider ratesProvider) {
+
     RatesProvider bumpedRatesProvider = ratesProvider.toBuilder()
-        .discountCurves(ratesProvider.getDiscountCurves().keySet().stream()
-            .collect(toImmutableMap(Function.identity(), k -> bumpedCurve)))
-        .indexCurves(ratesProvider.getIndexCurves().keySet().stream()
-            .collect(toImmutableMap(Function.identity(), k -> bumpedCurve)))
+        .discountCurves(ratesProvider.getDiscountFactors().keySet().stream()
+            .collect(toImmutableMap(Function.identity(), k -> bumped)))
+        .indexCurves(ratesProvider.getIborIndexRates().keySet().stream()
+            .collect(toImmutableMap(Function.identity(), k -> bumped)))
+        .indexCurves(ratesProvider.getOvernightIndexRates().keySet().stream()
+            .collect(toImmutableMap(Function.identity(), k -> bumped)))
         .build();
     PointSensitivities pointSensitivities = PRICER_SWAP.presentValueSensitivity(SWAP, bumpedRatesProvider).build();
     CurveCurrencyParameterSensitivities paramSensitivities = bumpedRatesProvider.curveParameterSensitivity(pointSensitivities);

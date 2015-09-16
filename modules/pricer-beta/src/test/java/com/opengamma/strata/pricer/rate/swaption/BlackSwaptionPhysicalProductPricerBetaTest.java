@@ -99,7 +99,7 @@ public class BlackSwaptionPhysicalProductPricerBetaTest {
       new RatesFiniteDifferenceSensitivityCalculator(FD_SHIFT);
 
   private static final ImmutableRatesProvider MULTI_USD =
-      RatesProviderDataSets.MULTI_USD.toBuilder().valuationDate(VALUATION_DATE).build();
+      RatesProviderDataSets.MULTI_USD.toBuilder(VALUATION_DATE).build();
   private static final double VOLATILITY = 0.20;
   private static final BlackVolatilityConstantSwaptionProvider BLACK_VOL_CST_SWAPTION_PROVIDER_USD =
       BlackVolatilityConstantSwaptionProvider.of(VOLATILITY, USD_FIXED_6M_LIBOR_3M, ACT_365F, VALUATION_DATE);

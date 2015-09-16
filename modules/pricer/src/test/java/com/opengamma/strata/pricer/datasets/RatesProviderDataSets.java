@@ -8,8 +8,6 @@ package com.opengamma.strata.pricer.datasets;
 import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
-import static com.opengamma.strata.basics.index.FxIndices.ECB_EUR_GBP;
-import static com.opengamma.strata.basics.index.FxIndices.ECB_EUR_USD;
 import static com.opengamma.strata.basics.index.FxIndices.WM_EUR_USD;
 import static com.opengamma.strata.basics.index.FxIndices.WM_GBP_USD;
 import static com.opengamma.strata.basics.index.IborIndices.GBP_LIBOR_3M;
@@ -20,14 +18,9 @@ import static com.opengamma.strata.basics.index.OvernightIndices.GBP_SONIA;
 import static com.opengamma.strata.basics.index.OvernightIndices.USD_FED_FUND;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
 
-import com.google.common.collect.ImmutableMap;
 import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
-import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.FxMatrix;
-import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.curve.Curve;
@@ -71,19 +64,6 @@ public class RatesProviderDataSets {
   {0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290, 0.0300, 0.0310};
 
   //-------------------------------------------------------------------------
-  public static final Map<Index, LocalDateDoubleTimeSeries> TIME_SERIES =
-      ImmutableMap.<Index, LocalDateDoubleTimeSeries>builder()
-          .put(USD_FED_FUND, LocalDateDoubleTimeSeries.empty())
-          .put(USD_LIBOR_3M, LocalDateDoubleTimeSeries.empty())
-          .put(USD_LIBOR_6M, LocalDateDoubleTimeSeries.empty())
-          .put(GBP_SONIA, LocalDateDoubleTimeSeries.empty())
-          .put(GBP_LIBOR_3M, LocalDateDoubleTimeSeries.empty())
-          .put(GBP_LIBOR_6M, LocalDateDoubleTimeSeries.empty())
-          .put(WM_GBP_USD, LocalDateDoubleTimeSeries.empty())
-          .put(WM_EUR_USD, LocalDateDoubleTimeSeries.empty())
-          .put(ECB_EUR_GBP, LocalDateDoubleTimeSeries.empty())
-          .put(ECB_EUR_USD, LocalDateDoubleTimeSeries.empty())
-          .build();
   public static final CurveInterpolator INTERPOLATOR = Interpolator1DFactory.LINEAR_INSTANCE;
 
   //-------------------------------------------------------------------------
@@ -100,42 +80,28 @@ public class RatesProviderDataSets {
   private static final CurveMetadata USD_DSC_METADATA = Curves.zeroRates(USD_DSC_NAME, ACT_360);
   private static final CurveMetadata USD_L3_METADATA = Curves.zeroRates(USD_L3_NAME, ACT_360);
   private static final CurveMetadata USD_L6_METADATA = Curves.zeroRates(USD_L6_NAME, ACT_360);
-
   private static final Curve USD_SINGLE_CURVE =
       InterpolatedNodalCurve.of(USD_SINGLE_METADATA, TIMES_1, RATES_1_1, INTERPOLATOR);
-  private static final Map<Currency, Curve> USD_SINGLE_CCY_MAP = ImmutableMap.of(USD, USD_SINGLE_CURVE);
-  private static final Map<Index, Curve> USD_SINGLE_IND_MAP = ImmutableMap.of(
-      USD_FED_FUND, USD_SINGLE_CURVE,
-      USD_LIBOR_3M, USD_SINGLE_CURVE,
-      USD_LIBOR_6M, USD_SINGLE_CURVE);
 
-  public static final ImmutableRatesProvider SINGLE_USD = ImmutableRatesProvider.builder()
-      .valuationDate(VAL_DATE_2014_01_22)
+  public static final ImmutableRatesProvider SINGLE_USD = ImmutableRatesProvider.builder(VAL_DATE_2014_01_22)
       .fxMatrix(FX_MATRIX_USD)
-      .discountCurves(USD_SINGLE_CCY_MAP)
-      .indexCurves(USD_SINGLE_IND_MAP)
-      .timeSeries(TIME_SERIES)
+      .discountCurve(USD, USD_SINGLE_CURVE)
+      .overnightIndexCurve(USD_FED_FUND, USD_SINGLE_CURVE, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_3M, USD_SINGLE_CURVE, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_6M, USD_SINGLE_CURVE, LocalDateDoubleTimeSeries.empty())
       .build();
 
   //-------------------------------------------------------------------------
-  private static final Curve USD_DSC =
-      InterpolatedNodalCurve.of(USD_DSC_METADATA, TIMES_1, RATES_1_1, INTERPOLATOR);
-  private static final Curve USD_L3 =
-      InterpolatedNodalCurve.of(USD_L3_METADATA, TIMES_2, RATES_2_1, INTERPOLATOR);
-  private static final Curve USD_L6 =
-      InterpolatedNodalCurve.of(USD_L6_METADATA, TIMES_3, RATES_3_1, INTERPOLATOR);
-  private static final Map<Currency, Curve> USD_MULTI_CCY_MAP = ImmutableMap.of(USD, USD_DSC);
-  private static final Map<Index, Curve> USD_MULTI_IND_MAP = ImmutableMap.of(
-      USD_FED_FUND, USD_DSC,
-      USD_LIBOR_3M, USD_L3,
-      USD_LIBOR_6M, USD_L6);
+  private static final Curve USD_DSC = InterpolatedNodalCurve.of(USD_DSC_METADATA, TIMES_1, RATES_1_1, INTERPOLATOR);
+  private static final Curve USD_L3 = InterpolatedNodalCurve.of(USD_L3_METADATA, TIMES_2, RATES_2_1, INTERPOLATOR);
+  private static final Curve USD_L6 = InterpolatedNodalCurve.of(USD_L6_METADATA, TIMES_3, RATES_3_1, INTERPOLATOR);
 
-  public static final ImmutableRatesProvider MULTI_USD = ImmutableRatesProvider.builder()
-      .valuationDate(VAL_DATE_2014_01_22)
+  public static final ImmutableRatesProvider MULTI_USD = ImmutableRatesProvider.builder(VAL_DATE_2014_01_22)
       .fxMatrix(FX_MATRIX_USD)
-      .discountCurves(USD_MULTI_CCY_MAP)
-      .indexCurves(USD_MULTI_IND_MAP)
-      .timeSeries(TIME_SERIES)
+      .discountCurve(USD, USD_DSC)
+      .overnightIndexCurve(USD_FED_FUND, USD_DSC, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_3M, USD_L3, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_6M, USD_L6, LocalDateDoubleTimeSeries.empty())
       .build();
 
   //-------------------------------------------------------------------------
@@ -150,25 +116,16 @@ public class RatesProviderDataSets {
   private static final CurveMetadata GBP_DSC_METADATA = Curves.zeroRates(GBP_DSC_NAME, ACT_360);
   private static final CurveMetadata GBP_L3_METADATA = Curves.zeroRates(GBP_L3_NAME, ACT_360);
   private static final CurveMetadata GBP_L6_METADATA = Curves.zeroRates(GBP_L6_NAME, ACT_360);
+  private static final Curve GBP_DSC = InterpolatedNodalCurve.of(GBP_DSC_METADATA, TIMES_1, RATES_1_2, INTERPOLATOR);
+  private static final Curve GBP_L3 = InterpolatedNodalCurve.of(GBP_L3_METADATA, TIMES_2, RATES_2_2, INTERPOLATOR);
+  private static final Curve GBP_L6 = InterpolatedNodalCurve.of(GBP_L6_METADATA, TIMES_3, RATES_3_2, INTERPOLATOR);
 
-  private static final Curve GBP_DSC =
-      InterpolatedNodalCurve.of(GBP_DSC_METADATA, TIMES_1, RATES_1_2, INTERPOLATOR);
-  private static final Curve GBP_L3 =
-      InterpolatedNodalCurve.of(GBP_L3_METADATA, TIMES_2, RATES_2_2, INTERPOLATOR);
-  private static final Curve GBP_L6 =
-      InterpolatedNodalCurve.of(GBP_L6_METADATA, TIMES_3, RATES_3_2, INTERPOLATOR);
-  private static final Map<Currency, Curve> GBP_MULTI_CCY_MAP = ImmutableMap.of(GBP, GBP_DSC);
-  private static final Map<Index, Curve> GBP_MULTI_IND_MAP = ImmutableMap.of(
-      GBP_SONIA, GBP_DSC,
-      GBP_LIBOR_3M, GBP_L3,
-      GBP_LIBOR_6M, GBP_L6);
-
-  public static final ImmutableRatesProvider MULTI_GBP = ImmutableRatesProvider.builder()
-      .valuationDate(VAL_DATE_2014_01_22)
+  public static final ImmutableRatesProvider MULTI_GBP = ImmutableRatesProvider.builder(VAL_DATE_2014_01_22)
       .fxMatrix(FX_MATRIX_GBP)
-      .discountCurves(GBP_MULTI_CCY_MAP)
-      .indexCurves(GBP_MULTI_IND_MAP)
-      .timeSeries(TIME_SERIES)
+      .discountCurve(GBP, GBP_DSC)
+      .overnightIndexCurve(GBP_SONIA, GBP_DSC, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(GBP_LIBOR_3M, GBP_L3, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(GBP_LIBOR_6M, GBP_L6, LocalDateDoubleTimeSeries.empty())
       .build();
 
   //-------------------------------------------------------------------------
@@ -177,26 +134,18 @@ public class RatesProviderDataSets {
   private static final FxMatrix FX_MATRIX_GBP_USD =
       FxMatrix.builder().addRate(GBP, USD, 1.50).build();
 
-  private static final Map<Currency, Curve> GBP_USD_MULTI_CCY_MAP = new HashMap<>();
-  static {
-    GBP_USD_MULTI_CCY_MAP.put(GBP, GBP_DSC);
-    GBP_USD_MULTI_CCY_MAP.put(USD, USD_DSC);
-  }
-  private static final Map<Index, Curve> GBP_USD_MULTI_IND_MAP = new HashMap<>();
-  static {
-    GBP_USD_MULTI_IND_MAP.put(GBP_SONIA, GBP_DSC);
-    GBP_USD_MULTI_IND_MAP.put(GBP_LIBOR_3M, GBP_L3);
-    GBP_USD_MULTI_IND_MAP.put(GBP_LIBOR_6M, GBP_L6);
-    GBP_USD_MULTI_IND_MAP.put(USD_FED_FUND, USD_DSC);
-    GBP_USD_MULTI_IND_MAP.put(USD_LIBOR_3M, USD_L3);
-    GBP_USD_MULTI_IND_MAP.put(USD_LIBOR_6M, USD_L6);
-  }
-  public static final ImmutableRatesProvider MULTI_GBP_USD = ImmutableRatesProvider.builder()
-      .valuationDate(VAL_DATE_2014_01_22)
+  public static final ImmutableRatesProvider MULTI_GBP_USD = ImmutableRatesProvider.builder(VAL_DATE_2014_01_22)
       .fxMatrix(FX_MATRIX_GBP_USD)
-      .discountCurves(GBP_USD_MULTI_CCY_MAP)
-      .indexCurves(GBP_USD_MULTI_IND_MAP)
-      .timeSeries(TIME_SERIES)
+      .fxIndexTimeSeries(WM_GBP_USD, LocalDateDoubleTimeSeries.empty())
+      .fxIndexTimeSeries(WM_EUR_USD, LocalDateDoubleTimeSeries.empty())
+      .discountCurve(GBP, GBP_DSC)
+      .discountCurve(USD, USD_DSC)
+      .overnightIndexCurve(GBP_SONIA, GBP_DSC, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(GBP_LIBOR_3M, GBP_L3, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(GBP_LIBOR_6M, GBP_L6, LocalDateDoubleTimeSeries.empty())
+      .overnightIndexCurve(USD_FED_FUND, USD_DSC, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_3M, USD_L3, LocalDateDoubleTimeSeries.empty())
+      .iborIndexCurve(USD_LIBOR_6M, USD_L6, LocalDateDoubleTimeSeries.empty())
       .build();
 
 }

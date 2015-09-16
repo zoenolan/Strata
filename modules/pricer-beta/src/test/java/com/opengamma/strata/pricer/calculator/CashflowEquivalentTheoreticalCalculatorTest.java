@@ -15,14 +15,11 @@ import static com.opengamma.strata.basics.index.OvernightIndices.EUR_EONIA;
 import static org.testng.Assert.assertEquals;
 
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.testng.annotations.Test;
 
 import com.opengamma.strata.basics.currency.Payment;
-import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeriesBuilder;
 import com.opengamma.strata.finance.rate.FixedRateObservation;
@@ -144,30 +141,13 @@ public class CashflowEquivalentTheoreticalCalculatorTest {
   /* Pricer */
   private static final CashflowEquivalentTheoreticalCalculator CFEC = CashflowEquivalentTheoreticalCalculator.DEFAULT;
   /* Rate provider */
-  private static final ImmutableRatesProvider RATES_1 = 
-      ImmutableRatesProvider.builder()
-      .valuationDate(VAlUATION_DATE_1)
-      .build();
-  private static final ImmutableRatesProvider RATES_2 = 
-      ImmutableRatesProvider.builder()
-      .valuationDate(IBOR_FIXING_DATE)
-      .build();
-  private static final ImmutableRatesProvider RATES_3 = 
-      ImmutableRatesProvider.builder()
-      .valuationDate(START_DATE)
-      .build();
+  private static final ImmutableRatesProvider RATES_1 = ImmutableRatesProvider.builder(VAlUATION_DATE_1).build();
+  private static final ImmutableRatesProvider RATES_2 = ImmutableRatesProvider.builder(IBOR_FIXING_DATE).build();
+  private static final ImmutableRatesProvider RATES_3 = ImmutableRatesProvider.builder(START_DATE).build();
   private static final double IBOR_FIXING_VALUE = 0.02;
   private static final LocalDateDoubleTimeSeries TS_EURIBOR6M = 
       LocalDateDoubleTimeSeries.builder().put(IBOR_FIXING_DATE, IBOR_FIXING_VALUE).build();
-  private static final Map<Index, LocalDateDoubleTimeSeries> MAP_TS = new HashMap<>();
-  static {
-    MAP_TS.put(EUR_EURIBOR_6M, TS_EURIBOR6M);
-  }
-  private static final Map<Index, Curve> MAP_IND_CURVE = new HashMap<>();
   private static final Curve DUMMY_CURVE = ConstantNodalCurve.of(Curves.zeroRates("EUR-EURIBOR6M", ACT_360), 0.0);
-  static {
-    MAP_IND_CURVE.put(EUR_EURIBOR_6M, DUMMY_CURVE);
-  }  
   private static final double[] ON_FIXING_VALUE = 
       new double[] {0.0010, 0.0011, 0.0012, 0.0013, 0.0014};
   private static final LocalDate[] ON_FIXING_DATE = 
@@ -181,26 +161,12 @@ public class CashflowEquivalentTheoreticalCalculatorTest {
     }
     TS_ON = builder.build();
   }
-  static {
-    MAP_TS.put(EUR_EONIA, TS_ON);
-    MAP_TS.put(CHF_TOIS, TS_ON); // TOIS and EONIA should not be the same, only for test purposes.
-  }
-  static {
-    MAP_IND_CURVE.put(EUR_EONIA, DUMMY_CURVE);
-    MAP_IND_CURVE.put(CHF_TOIS, DUMMY_CURVE);
-  }  
-  private static final ImmutableRatesProvider RATES_4 = 
-      ImmutableRatesProvider.builder()
-      .valuationDate(VAlUATION_DATE_4)
-      .timeSeries(MAP_TS)
-      .indexCurves(MAP_IND_CURVE)
+  private static final ImmutableRatesProvider RATES_4 = ImmutableRatesProvider.builder(VAlUATION_DATE_4)
+      .iborIndexCurve(EUR_EURIBOR_6M, DUMMY_CURVE, TS_EURIBOR6M)
+      .overnightIndexCurve(EUR_EONIA, DUMMY_CURVE, TS_ON)
+      .overnightIndexCurve(CHF_TOIS, DUMMY_CURVE, TS_ON) // TOIS and EONIA should not be the same, only for test purposes
       .build();
-  private static final ImmutableRatesProvider RATES_5 = 
-      ImmutableRatesProvider.builder()
-      .valuationDate(VAlUATION_DATE_5)
-      .timeSeries(MAP_TS)
-      .indexCurves(MAP_IND_CURVE)
-      .build();
+  private static final ImmutableRatesProvider RATES_5 = RATES_4.toBuilder(VAlUATION_DATE_5).build();
   /* Tolerance */
   private static final double TOLERANCE_CF = 1.0E-2;
   

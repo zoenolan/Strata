@@ -39,6 +39,7 @@ import com.opengamma.strata.market.key.IborIndexRatesKey;
 import com.opengamma.strata.market.key.IndexRateKey;
 import com.opengamma.strata.market.value.DiscountFactors;
 import com.opengamma.strata.market.value.SimpleDiscountFactors;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.rate.swap.SwapDummyData;
 
 /**
@@ -91,8 +92,8 @@ public class SwapFunctionGroupsTest {
   public void coverage_functions() {
     SwapTrade trade = SwapTrade.builder().product(Swap.of(SwapDummyData.FIXED_RATECALC_SWAP_LEG)).build();
     LocalDate valDate = trade.getProduct().getEndDate().minusDays(7);
-    ConstantNodalCurve curve = ConstantNodalCurve.of(Curves.discountFactors("Test", ACT_360), 0.99);
-    DiscountFactors df = SimpleDiscountFactors.of(GBP, valDate, curve);
+    ConstantNodalCurve curve = ConstantNodalCurve.of(Curves.zeroRates("Test", ACT_360), 0.9);
+    DiscountFactors df = ZeroRateDiscountFactors.of(GBP, valDate, curve);
     MarketDataMap md = new MarketDataMap(
         valDate,
         ImmutableMap.of(DiscountCurveKey.of(GBP), curve, DiscountFactorsKey.of(GBP), df),

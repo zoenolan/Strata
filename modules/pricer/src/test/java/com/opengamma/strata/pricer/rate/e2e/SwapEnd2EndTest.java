@@ -22,7 +22,9 @@ import static org.testng.Assert.assertEquals;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.testng.annotations.Test;
 
@@ -36,6 +38,7 @@ import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.basics.index.IborIndices;
 import com.opengamma.strata.basics.index.ImmutableIborIndex;
+import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.StubConvention;
@@ -56,6 +59,7 @@ import com.opengamma.strata.finance.rate.swap.StubCalculation;
 import com.opengamma.strata.finance.rate.swap.Swap;
 import com.opengamma.strata.finance.rate.swap.SwapLeg;
 import com.opengamma.strata.finance.rate.swap.SwapTrade;
+import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.pricer.impl.Legacy;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.RatesProvider;
@@ -780,17 +784,27 @@ public class SwapEnd2EndTest {
 
   // rates provider
   static RatesProvider provider() {
-    return ImmutableRatesProvider.builder()
-        .valuationDate(LocalDate.of(2014, 1, 22))
+    Map<Index, Curve> indexCurves = lockIndexCalendars(Legacy.indexCurves(MULTICURVE_OIS));
+    return ImmutableRatesProvider.builder(LocalDate.of(2014, 1, 22))
         .fxMatrix(MULTICURVE_OIS.getFxRates())
         .discountCurves(Legacy.discountCurves(MULTICURVE_OIS))
-        .indexCurves(Legacy.indexCurves(MULTICURVE_OIS))
-        .timeSeries(ImmutableMap.of(
-            USD_LIBOR_1M, TS_USDLIBOR1M,
-            USD_LIBOR_3M, TS_USDLIBOR3M,
-            USD_LIBOR_6M, TS_USDLIBOR6M,
-            USD_FED_FUND, TS_USDON))
+        .indexCurves(
+            indexCurves,
+            ImmutableMap.of(
+                USD_LIBOR_1M, TS_USDLIBOR1M,
+                USD_LIBOR_3M, TS_USDLIBOR3M,
+                USD_LIBOR_6M, TS_USDLIBOR6M,
+                USD_FED_FUND, TS_USDON))
         .build();
+  }
+
+  // use index definition with locked calendar
+  private static Map<Index, Curve> lockIndexCalendars(Map<Index, Curve> indexCurves) {
+    Map<Index, Curve> result = new HashMap<>(indexCurves);
+    result.put(USD_LIBOR_1M, result.remove(IborIndices.USD_LIBOR_1M));
+    result.put(USD_LIBOR_3M, result.remove(IborIndices.USD_LIBOR_3M));
+    result.put(USD_LIBOR_6M, result.remove(IborIndices.USD_LIBOR_6M));
+    return result;
   }
 
   // use a fixed known set of holiday dates to ensure tests produce same numbers

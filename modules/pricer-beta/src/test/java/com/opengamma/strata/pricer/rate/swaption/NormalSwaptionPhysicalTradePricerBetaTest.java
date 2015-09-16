@@ -78,7 +78,7 @@ public class NormalSwaptionPhysicalTradePricerBetaTest {
   private static final DiscountingPaymentPricer PRICER_PAYMENT = DiscountingPaymentPricer.DEFAULT;
   
   private static final ImmutableRatesProvider MULTI_USD = 
-      RatesProviderDataSets.MULTI_USD.toBuilder().valuationDate(VALUATION_DATE).build();
+      RatesProviderDataSets.MULTI_USD.toBuilder(VALUATION_DATE).build();
   private static final NormalVolatilityExpiryTenorSwaptionProvider NORMAL_VOL_SWAPTION_PROVIDER_USD =
       NormalSwaptionVolatilityDataSets.NORMAL_VOL_SWAPTION_PROVIDER_USD_STD; 
   

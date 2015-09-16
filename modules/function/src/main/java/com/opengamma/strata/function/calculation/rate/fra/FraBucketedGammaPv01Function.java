@@ -16,6 +16,7 @@ import com.google.common.collect.Iterables;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.basics.index.Index;
+import com.opengamma.strata.basics.market.MarketDataKey;
 import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.engine.calculation.DefaultSingleCalculationMarketData;
 import com.opengamma.strata.engine.calculation.function.result.ScenarioResult;
@@ -25,13 +26,13 @@ import com.opengamma.strata.finance.rate.fra.ExpandedFra;
 import com.opengamma.strata.finance.rate.fra.Fra;
 import com.opengamma.strata.finance.rate.fra.FraTrade;
 import com.opengamma.strata.function.calculation.rate.MarketDataUtils;
-import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.NodalCurve;
-import com.opengamma.strata.market.key.DiscountCurveKey;
+import com.opengamma.strata.market.key.DiscountFactorsKey;
 import com.opengamma.strata.market.key.RateIndexCurveKey;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.pricer.sensitivity.CurveGammaCalculator;
 
@@ -66,35 +67,28 @@ public class FraBucketedGammaPv01Function
       ExpandedFra expandedFra,
       SingleCalculationMarketData marketData) {
 
-    // find the curve and check it is valid
+    // find the curve and check it is valid, using cast method for better error message
     Currency currency = expandedFra.getCurrency();
-    NodalCurve nodalCurve = findNodalCurve(marketData, currency);
+    ZeroRateDiscountFactors baseDf = ZeroRateDiscountFactors.class.cast(marketData.getValue(DiscountFactorsKey.of(currency)));
+    NodalCurve baseCurve = baseDf.getCurve().toNodalCurve();
 
     // find indices and validate there is only one curve
     Set<IborIndex> indices = new HashSet<>();
     indices.add(fra.getIndex());
     fra.getIndexInterpolated().ifPresent(indices::add);
-    validateSingleCurve(indices, marketData, nodalCurve);
+    validateSingleCurve(indices, marketData, baseCurve);
 
     // calculate gamma
     CurveCurrencyParameterSensitivity gamma = CurveGammaCalculator.DEFAULT.calculateSemiParallelGamma(
-        nodalCurve, currency, c -> calculateCurveSensitivity(expandedFra, currency, indices, marketData, c));
+        baseDf.getCurve().toNodalCurve(),
+        currency,
+        bumped -> calculateCurveSensitivity(expandedFra, baseDf, marketData, indices, bumped));
     return CurveCurrencyParameterSensitivities.of(gamma).multipliedBy(ONE_BASIS_POINT * ONE_BASIS_POINT);
-  }
-
-  // finds the discount curve and ensures it is a NodalCurve
-  private NodalCurve findNodalCurve(SingleCalculationMarketData marketData, Currency currency) {
-    Curve curve = marketData.getValue(DiscountCurveKey.of(currency));
-    if (!(curve instanceof NodalCurve)) {
-      throw new IllegalArgumentException(Messages.format(
-          "Implementation only supports nodal curves; unsupported curve type: {}", curve.getClass().getSimpleName()));
-    }
-    return (NodalCurve) curve;
   }
 
   // validates that the indices all resolve to the single specified curve
   private void validateSingleCurve(Set<IborIndex> indices, SingleCalculationMarketData marketData, NodalCurve nodalCurve) {
-    Set<RateIndexCurveKey> differentForwardCurves = indices.stream()
+    Set<MarketDataKey<?>> differentForwardCurves = indices.stream()
         .map(RateIndexCurveKey::of)
         .filter(k -> !nodalCurve.equals(marketData.getValue(k)))
         .collect(toSet());
@@ -108,12 +102,12 @@ public class FraBucketedGammaPv01Function
   // calculates the sensitivity
   private CurveCurrencyParameterSensitivity calculateCurveSensitivity(
       ExpandedFra expandedFra,
-      Currency currency,
-      Set<? extends Index> indices,
+      ZeroRateDiscountFactors baseDf,
       SingleCalculationMarketData marketData,
-      NodalCurve bumpedCurve) {
+      Set<? extends Index> indices,
+      NodalCurve bumped) {
 
-    RatesProvider ratesProvider = MarketDataUtils.toSingleCurveRatesProvider(marketData, currency, indices, bumpedCurve);
+    RatesProvider ratesProvider = MarketDataUtils.toSingleCurveRatesProvider(marketData, indices, baseDf.withCurve(bumped));
     PointSensitivities pointSensitivities = pricer().presentValueSensitivity(expandedFra, ratesProvider);
     CurveCurrencyParameterSensitivities paramSensitivities = ratesProvider.curveParameterSensitivity(pointSensitivities);
     return Iterables.getOnlyElement(paramSensitivities.getSensitivities());

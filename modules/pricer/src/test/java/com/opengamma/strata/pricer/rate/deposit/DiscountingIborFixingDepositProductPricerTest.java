@@ -19,22 +19,25 @@ import java.time.LocalDate;
 
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableMap;
 import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.BuySell;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
-import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.finance.rate.deposit.ExpandedIborFixingDeposit;
 import com.opengamma.strata.finance.rate.deposit.IborFixingDeposit;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
+import com.opengamma.strata.market.value.DiscountFactors;
+import com.opengamma.strata.market.value.DiscountIborIndexRates;
+import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.impl.rate.ForwardIborRateObservationFn;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.RatesProvider;
+import com.opengamma.strata.pricer.rate.SimpleRatesProvider;
 import com.opengamma.strata.pricer.sensitivity.RatesFiniteDifferenceSensitivityCalculator;
 
 /**
@@ -63,6 +66,8 @@ public class DiscountingIborFixingDepositProductPricerTest {
   private static final double EPS_FD = 1E-7;
   private static final RatesFiniteDifferenceSensitivityCalculator CAL_FD =
       new RatesFiniteDifferenceSensitivityCalculator(EPS_FD);
+  private static final DiscountFactors DISCOUNT_FACTORS;
+  private static final IborIndexRates IBOR_RATES;
   private static final ImmutableRatesProvider IMM_PROV;
   static {
     CurveInterpolator interp = Interpolator1DFactory.DOUBLE_QUADRATIC_INSTANCE;
@@ -74,12 +79,9 @@ public class DiscountingIborFixingDepositProductPricerTest {
     double[] rate_index = new double[] {0.0180, 0.0180, 0.0175, 0.0165};
     InterpolatedNodalCurve indexCurve =
         InterpolatedNodalCurve.of(Curves.zeroRates("EUR-EURIBOR6M", ACT_ACT_ISDA), time_index, rate_index, interp);
-    IMM_PROV = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .discountCurves(ImmutableMap.of(EUR, dscCurve))
-        .indexCurves(ImmutableMap.of(EUR_EURIBOR_6M, indexCurve))
-        .timeSeries(ImmutableMap.of(EUR_EURIBOR_6M, LocalDateDoubleTimeSeries.empty()))
-        .build();
+    DISCOUNT_FACTORS = ZeroRateDiscountFactors.of(EUR, VAL_DATE, dscCurve);
+    IBOR_RATES = DiscountIborIndexRates.of(EUR_EURIBOR_6M, ZeroRateDiscountFactors.of(EUR, VAL_DATE, indexCurve));
+    IMM_PROV = new SimpleRatesProvider(VAL_DATE, DISCOUNT_FACTORS, IBOR_RATES).toImmutableRatesProvider();
   }
 
   //-------------------------------------------------------------------------

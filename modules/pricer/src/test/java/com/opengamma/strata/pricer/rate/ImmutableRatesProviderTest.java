@@ -34,7 +34,11 @@ import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.value.DiscountFxForwardRates;
+import com.opengamma.strata.market.value.DiscountIborIndexRates;
+import com.opengamma.strata.market.value.DiscountOvernightIndexRates;
 import com.opengamma.strata.market.value.ForwardPriceIndexValues;
+import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.market.value.OvernightIndexRates;
 import com.opengamma.strata.market.value.PriceIndexValues;
 import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 
@@ -59,8 +63,18 @@ public class ImmutableRatesProviderTest {
       Curves.zeroRates("USD-Discount", ACT_ACT_ISDA), USD_DSC);
   private static final Curve USD_LIBOR_CURVE = ConstantNodalCurve.of(
       Curves.zeroRates("USD-Discount", ACT_ACT_ISDA), 0.96d);
+  private static final IborIndexRates LIBOR_RATES = DiscountIborIndexRates.of(
+      USD_LIBOR_3M,
+      LocalDateDoubleTimeSeries.of(VAL_DATE, 0.62),
+      ZeroRateDiscountFactors.of(USD, VAL_DATE, USD_LIBOR_CURVE));
+
   private static final Curve FED_FUND_CURVE = ConstantNodalCurve.of(
       Curves.zeroRates("USD-Discount", ACT_ACT_ISDA), 0.97d);
+  private static final OvernightIndexRates FED_FUND_RATES = DiscountOvernightIndexRates.of(
+      USD_FED_FUND,
+      LocalDateDoubleTimeSeries.of(VAL_DATE, 0.62),
+      ZeroRateDiscountFactors.of(USD, VAL_DATE, FED_FUND_CURVE));
+
   private static final PriceIndexValues GBPRI_CURVE = ForwardPriceIndexValues.of(
       GB_RPI,
       VAL_MONTH,
@@ -70,26 +84,24 @@ public class ImmutableRatesProviderTest {
   //-------------------------------------------------------------------------
   public void test_builder() {
     LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.of(PREV_DATE, 0.62d);
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
     assertEquals(test.getValuationDate(), VAL_DATE);
-    assertEquals(ImmutableRatesProvider.meta().timeSeries().get(test), ImmutableMap.of(WM_GBP_USD, ts));
+    assertEquals(ImmutableRatesProvider.meta().fxIndexTimeSeries().get(test), ImmutableMap.of(WM_GBP_USD, ts));
   }
 
   //-------------------------------------------------------------------------
   public void test_discountFactors() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD))
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
         .build();
     assertEquals(test.discountFactors(GBP).getCurrency(), GBP);
   }
 
   public void test_discountFactors_notKnown() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
         .build();
     assertThrowsIllegalArg(() -> test.discountFactors(GBP));
     assertThrowsIllegalArg(() -> test.discountFactor(GBP, LocalDate.of(2014, 7, 30)));
@@ -97,8 +109,7 @@ public class ImmutableRatesProviderTest {
 
   //-------------------------------------------------------------------------
   public void test_fxRate_separate() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
         .build();
     assertEquals(test.fxRate(USD, GBP), 1 / FX_GBP_USD, 0d);
@@ -106,8 +117,7 @@ public class ImmutableRatesProviderTest {
   }
 
   public void test_fxRate_pair() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
         .build();
     assertEquals(test.fxRate(CurrencyPair.of(USD, GBP)), 1 / FX_GBP_USD, 0d);
@@ -116,22 +126,27 @@ public class ImmutableRatesProviderTest {
   //-------------------------------------------------------------------------
   public void test_fxIndexRates() {
     LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.of(VAL_DATE, 0.62d);
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
     assertEquals(test.fxIndexRates(WM_GBP_USD).getIndex(), WM_GBP_USD);
     assertEquals(test.fxIndexRates(WM_GBP_USD).getTimeSeries(), ts);
   }
 
+  public void test_fxIndexRates_notKnown() {
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE).build();
+    assertThrowsIllegalArg(() -> test.fxIndexRates(WM_GBP_USD));
+  }
+
   //-------------------------------------------------------------------------
   public void test_fxForwardRates() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
         .build();
     DiscountFxForwardRates res = (DiscountFxForwardRates) test.fxForwardRates(CurrencyPair.of(GBP, USD));
     assertEquals(res.getBaseCurrencyDiscountFactors(), ZeroRateDiscountFactors.of(GBP, VAL_DATE, DISCOUNT_CURVE_GBP));
@@ -143,55 +158,55 @@ public class ImmutableRatesProviderTest {
 
   //-------------------------------------------------------------------------
   public void test_iborIndexRates() {
-    LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.of(VAL_DATE, 0.62d);
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .indexCurves(ImmutableMap.of(USD_LIBOR_3M, USD_LIBOR_CURVE))
-        .timeSeries(ImmutableMap.of(USD_LIBOR_3M, ts))
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
+        .iborIndexRates(LIBOR_RATES)
         .build();
-    assertEquals(test.iborIndexRates(USD_LIBOR_3M).getIndex(), USD_LIBOR_3M);
-    assertEquals(test.iborIndexRates(USD_LIBOR_3M).getTimeSeries(), ts);
+    assertEquals(test.iborIndexRates(USD_LIBOR_3M), LIBOR_RATES);
+  }
+
+  public void test_iborIndexRates_notKnown() {
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE).build();
+    assertThrowsIllegalArg(() -> test.iborIndexRates(USD_LIBOR_3M));
   }
 
   //-------------------------------------------------------------------------
   public void test_overnightIndexRates() {
-    LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.of(VAL_DATE, 0.62d);
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .indexCurves(ImmutableMap.of(USD_FED_FUND, FED_FUND_CURVE))
-        .timeSeries(ImmutableMap.of(USD_FED_FUND, ts))
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
+        .overnightIndexRates(FED_FUND_RATES)
         .build();
-    assertEquals(test.overnightIndexRates(USD_FED_FUND).getIndex(), USD_FED_FUND);
-    assertEquals(test.overnightIndexRates(USD_FED_FUND).getTimeSeries(), ts);
+    assertEquals(test.overnightIndexRates(USD_FED_FUND), FED_FUND_RATES);
+  }
+
+  public void test_overnightIndexRates_notKnown() {
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE).build();
+    assertThrowsIllegalArg(() -> test.overnightIndexRates(USD_FED_FUND));
   }
 
   //-------------------------------------------------------------------------
   public void test_priceIndexValues() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .priceIndexValues(ImmutableMap.of(GB_RPI, GBPRI_CURVE))
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
+        .priceIndexValues(GBPRI_CURVE)
         .build();
     assertEquals(test.priceIndexValues(GB_RPI).getIndex(), GB_RPI);
   }
 
   public void test_priceIndexValues_notKnown() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .build();
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE).build();
     assertThrowsIllegalArg(() -> test.priceIndexValues(GB_RPI));
   }
 
   //-------------------------------------------------------------------------
   public void coverage() {
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
+        .fxMatrix(FX_MATRIX)
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .fxIndexTimeSeries(WM_GBP_USD, LocalDateDoubleTimeSeries.empty())
+        .iborIndexRates(LIBOR_RATES)
+        .overnightIndexRates(FED_FUND_RATES)
+        .priceIndexValues(GBPRI_CURVE)
         .build();
     coverImmutableBean(test);
-    ImmutableRatesProvider test2 = ImmutableRatesProvider.builder()
-        .valuationDate(LocalDate.of(2014, 6, 27))
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP))
-        .timeSeries(ImmutableMap.of(USD_LIBOR_3M, LocalDateDoubleTimeSeries.empty()))
-        .build();
+    ImmutableRatesProvider test2 = ImmutableRatesProvider.builder(LocalDate.of(2014, 6, 27)).build();
     coverBeanEquals(test, test2);
   }
 

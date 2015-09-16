@@ -38,12 +38,10 @@ import static org.testng.Assert.assertTrue;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.YearMonth;
-import java.util.Map;
 
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.PayReceive;
 import com.opengamma.strata.basics.currency.Currency;
@@ -51,7 +49,6 @@ import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.index.IborIndex;
-import com.opengamma.strata.basics.index.PriceIndex;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
@@ -72,7 +69,6 @@ import com.opengamma.strata.finance.rate.swap.RatePaymentPeriod;
 import com.opengamma.strata.finance.rate.swap.SwapLeg;
 import com.opengamma.strata.market.amount.CashFlow;
 import com.opengamma.strata.market.amount.CashFlows;
-import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
@@ -90,6 +86,7 @@ import com.opengamma.strata.pricer.impl.rate.ForwardInflationMonthlyRateObservat
 import com.opengamma.strata.pricer.impl.rate.swap.DispatchingPaymentEventPricer;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.RatesProvider;
+import com.opengamma.strata.pricer.rate.SimpleRatesProvider;
 import com.opengamma.strata.pricer.sensitivity.RatesFiniteDifferenceSensitivityCalculator;
 
 /**
@@ -398,7 +395,6 @@ public class DiscountingSwapLegPricerTest {
   //-------------------------------------------------------------------------
   private static final LocalDate DATE_14_06_09 = date(2014, 6, 9);
   private static final LocalDate DATE_19_06_09 = date(2019, 6, 9);
-  private static final LocalDate DATE_14_03_31 = date(2014, 3, 31);
   private static final double START_INDEX = 218.0;
   private static final double NOTIONAL = 1000d;
   private static final LocalDate VAL_DATE_INFLATION = LocalDate.of(2014, 7, 8);
@@ -433,15 +429,8 @@ public class DiscountingSwapLegPricerTest {
     // setup
     SwapLeg swapLeg = createInflationSwapLeg(false, PAY);
     DiscountingSwapLegPricer pricer = DiscountingSwapLegPricer.DEFAULT;
-    ImmutableMap<PriceIndex, PriceIndexValues> map = ImmutableMap.of(GB_RPI, GBPRI_CURVE_FLAT);
-    Map<Currency, Curve> dscCurve = RATES_GBP.getDiscountCurves();
-    LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.of(DATE_14_03_31, START_INDEX);
-    ImmutableRatesProvider prov = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE_INFLATION)
-        .timeSeries(ImmutableMap.of(GB_RPI, ts))
-        .priceIndexValues(map)
-        .discountCurves(dscCurve)
-        .build();
+    SimpleRatesProvider prov = new SimpleRatesProvider(VAL_DATE_INFLATION, RATES_GBP.discountFactors(GBP));
+    prov.setPriceIndexValues(GBPRI_CURVE_FLAT);
     // test futureValue and presentValue
     CurrencyAmount fvComputed = pricer.futureValue(swapLeg, prov);
     CurrencyAmount pvComputed = pricer.presentValue(swapLeg, prov);
@@ -476,15 +465,8 @@ public class DiscountingSwapLegPricerTest {
     // setup
     SwapLeg swapLeg = createInflationSwapLeg(true, RECEIVE);
     DiscountingSwapLegPricer pricer = DiscountingSwapLegPricer.DEFAULT;
-    ImmutableMap<PriceIndex, PriceIndexValues> map = ImmutableMap.of(GB_RPI, GBPRI_CURVE);
-    Map<Currency, Curve> dscCurve = RATES_GBP.getDiscountCurves();
-    LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.of(DATE_14_03_31, START_INDEX);
-    ImmutableRatesProvider prov = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE_INFLATION)
-        .timeSeries(ImmutableMap.of(GB_RPI, ts))
-        .priceIndexValues(map)
-        .discountCurves(dscCurve)
-        .build();
+    SimpleRatesProvider prov = new SimpleRatesProvider(VAL_DATE_INFLATION, RATES_GBP.discountFactors(GBP));
+    prov.setPriceIndexValues(GBPRI_CURVE);
     // test futureValue and presentValue
     CurrencyAmount fvComputed = pricer.futureValue(swapLeg, prov);
     CurrencyAmount pvComputed = pricer.presentValue(swapLeg, prov);
@@ -572,11 +554,7 @@ public class DiscountingSwapLegPricerTest {
         .calculation(rateCalc)
         .build();
     DiscountingSwapLegPricer pricer = DiscountingSwapLegPricer.DEFAULT;
-    Map<Currency, Curve> dscCurve = RATES_GBP.getDiscountCurves();
-    ImmutableRatesProvider prov = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE_INFLATION)
-        .discountCurves(dscCurve)
-        .build();
+    SimpleRatesProvider prov = new SimpleRatesProvider(VAL_DATE_INFLATION, RATES_GBP.discountFactors(GBP));
     // test futureValue and presentValue
     CurrencyAmount fvComputed = pricer.futureValue(swapLeg, prov);
     CurrencyAmount pvComputed = pricer.presentValue(swapLeg, prov);

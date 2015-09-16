@@ -100,7 +100,7 @@ public class NormalSwaptionPhysicalProductPricerBetaTest {
       new RatesFiniteDifferenceSensitivityCalculator(FD_SHIFT);
   
   private static final ImmutableRatesProvider MULTI_USD = 
-      RatesProviderDataSets.MULTI_USD.toBuilder().valuationDate(VALUATION_DATE).build();
+      RatesProviderDataSets.MULTI_USD.toBuilder(VALUATION_DATE).build();
   private static final NormalVolatilityExpiryTenorSwaptionProvider NORMAL_VOL_SWAPTION_PROVIDER_USD =
       NormalSwaptionVolatilityDataSets.NORMAL_VOL_SWAPTION_PROVIDER_USD_STD;  
   private static final NormalVolatilitySwaptionProvider NORMAL_VOL_SWAPTION_PROVIDER_USD_FLAT =

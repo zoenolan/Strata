@@ -17,20 +17,22 @@ import java.time.LocalDate;
 
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableMap;
 import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.BuySell;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
-import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.finance.TradeInfo;
 import com.opengamma.strata.finance.rate.deposit.IborFixingDeposit;
 import com.opengamma.strata.finance.rate.deposit.IborFixingDepositTrade;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
-import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
+import com.opengamma.strata.market.value.DiscountFactors;
+import com.opengamma.strata.market.value.DiscountIborIndexRates;
+import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
+import com.opengamma.strata.pricer.rate.SimpleRatesProvider;
 
 /**
  * Tests {@link DiscountingIborFixingDepositTradePricer}.
@@ -56,8 +58,9 @@ public class DiscountingIborFixingDepositTradePricerTest {
       .build();
   private static final IborFixingDepositTrade DEPOSIT_TRADE = 
       IborFixingDepositTrade.builder().product(DEPOSIT_PRODUCT).tradeInfo(TradeInfo.EMPTY).build();  
-  
-  private static final ImmutableRatesProvider IMM_PROV;
+
+  private static final DiscountFactors DISCOUNT_FACTORS;
+  private static final IborIndexRates IBOR_RATES;
   static {
     CurveInterpolator interp = Interpolator1DFactory.DOUBLE_QUADRATIC_INSTANCE;
     double[] time_eur = new double[] {0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 2.0};
@@ -68,12 +71,8 @@ public class DiscountingIborFixingDepositTradePricerTest {
     double[] rate_index = new double[] {0.0180, 0.0180, 0.0175, 0.0165};
     InterpolatedNodalCurve indexCurve =
         InterpolatedNodalCurve.of(Curves.zeroRates("EUR-EURIBOR6M", ACT_ACT_ISDA), time_index, rate_index, interp);
-    IMM_PROV = ImmutableRatesProvider.builder()
-        .valuationDate(VALUATION_DATE)
-        .discountCurves(ImmutableMap.of(EUR, dscCurve))
-        .indexCurves(ImmutableMap.of(EUR_EURIBOR_6M, indexCurve))
-        .timeSeries(ImmutableMap.of(EUR_EURIBOR_6M, LocalDateDoubleTimeSeries.empty()))
-        .build();
+    DISCOUNT_FACTORS = ZeroRateDiscountFactors.of(EUR, VALUATION_DATE, dscCurve);
+    IBOR_RATES = DiscountIborIndexRates.of(EUR_EURIBOR_6M, ZeroRateDiscountFactors.of(EUR, VALUATION_DATE, indexCurve));
   }
   
   private static final DiscountingIborFixingDepositProductPricer PRICER_PRODUCT =
@@ -88,32 +87,36 @@ public class DiscountingIborFixingDepositTradePricerTest {
   
   //-------------------------------------------------------------------------
   public void present_value() {
-    CurrencyAmount pvTrade = PRICER_TRADE.presentValue(DEPOSIT_TRADE, IMM_PROV);
-    CurrencyAmount pvProduct = PRICER_PRODUCT.presentValue(DEPOSIT_PRODUCT, IMM_PROV);
+    SimpleRatesProvider prov = new SimpleRatesProvider(VALUATION_DATE, DISCOUNT_FACTORS, IBOR_RATES);
+    CurrencyAmount pvTrade = PRICER_TRADE.presentValue(DEPOSIT_TRADE, prov);
+    CurrencyAmount pvProduct = PRICER_PRODUCT.presentValue(DEPOSIT_PRODUCT, prov);
     assertEquals(pvTrade.getCurrency(), pvProduct.getCurrency());
     assertEquals(pvTrade.getAmount(), pvProduct.getAmount(), TOLERANCE_PV);
   }
 
   //-------------------------------------------------------------------------
   public void present_value_sensitivity() {
-    PointSensitivities ptsTrade = PRICER_TRADE.presentValueSensitivity(DEPOSIT_TRADE, IMM_PROV);
-    PointSensitivities ptsProduct = PRICER_PRODUCT.presentValueSensitivity(DEPOSIT_PRODUCT, IMM_PROV);
+    SimpleRatesProvider prov = new SimpleRatesProvider(VALUATION_DATE, DISCOUNT_FACTORS, IBOR_RATES);
+    PointSensitivities ptsTrade = PRICER_TRADE.presentValueSensitivity(DEPOSIT_TRADE, prov);
+    PointSensitivities ptsProduct = PRICER_PRODUCT.presentValueSensitivity(DEPOSIT_PRODUCT, prov);
     assertTrue(ptsTrade.equalWithTolerance(ptsProduct, TOLERANCE_PV_DELTA));
   }
 
 
   //-------------------------------------------------------------------------
   public void par_spread() {
-    double psTrade = PRICER_TRADE.parSpread(DEPOSIT_TRADE, IMM_PROV);
-    double psProduct = PRICER_PRODUCT.parSpread(DEPOSIT_PRODUCT, IMM_PROV);
+    SimpleRatesProvider prov = new SimpleRatesProvider(VALUATION_DATE, DISCOUNT_FACTORS, IBOR_RATES);
+    double psTrade = PRICER_TRADE.parSpread(DEPOSIT_TRADE, prov);
+    double psProduct = PRICER_PRODUCT.parSpread(DEPOSIT_PRODUCT, prov);
     assertEquals(psTrade, psProduct, TOLERANCE_RATE);
     
   }
 
   //-------------------------------------------------------------------------
   public void par_spread_sensitivity() {
-    PointSensitivities ptsTrade = PRICER_TRADE.parSpreadSensitivity(DEPOSIT_TRADE, IMM_PROV);
-    PointSensitivities ptsProduct = PRICER_PRODUCT.parSpreadSensitivity(DEPOSIT_PRODUCT, IMM_PROV);
+    SimpleRatesProvider prov = new SimpleRatesProvider(VALUATION_DATE, DISCOUNT_FACTORS, IBOR_RATES);
+    PointSensitivities ptsTrade = PRICER_TRADE.parSpreadSensitivity(DEPOSIT_TRADE, prov);
+    PointSensitivities ptsProduct = PRICER_PRODUCT.parSpreadSensitivity(DEPOSIT_PRODUCT, prov);
     assertTrue(ptsTrade.equalWithTolerance(ptsProduct, TOLERANCE_PV_DELTA));    
   }
 

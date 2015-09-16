@@ -127,17 +127,17 @@ public class ImmutableRatesProviderParameterSensitivityTest {
   }
 
   // rates provider
-  private static RatesProvider PROVIDER = ImmutableRatesProvider.builder()
-      .valuationDate(VAL_DATE)
+  private static RatesProvider PROVIDER = ImmutableRatesProvider.builder(VAL_DATE)
       .fxMatrix(FX_MATRIX)
       .discountCurves(Legacy.discountCurves(MULTICURVE))
-      .indexCurves(Legacy.indexCurves(MULTICURVE))
-      .timeSeries(ImmutableMap.of(
-          EUR_EURIBOR_3M, TS_EMPTY,
-          USD_LIBOR_1M, TS_EMPTY,
-          USD_LIBOR_3M, TS_EMPTY,
-          EUR_EONIA, TS_EMPTY,
-          USD_FED_FUND, TS_EMPTY))
+      .indexCurves(
+          Legacy.indexCurves(MULTICURVE),
+          ImmutableMap.of(
+              EUR_EURIBOR_3M, TS_EMPTY,
+              USD_LIBOR_1M, TS_EMPTY,
+              USD_LIBOR_3M, TS_EMPTY,
+              EUR_EONIA, TS_EMPTY,
+              USD_FED_FUND, TS_EMPTY))
       .build();
 
   private static final double TOLERANCE_SENSI = 1.0E-8;
@@ -237,35 +237,35 @@ public class ImmutableRatesProviderParameterSensitivityTest {
 
   public void pointAndParameterFx() {
     LocalDateDoubleTimeSeries ts = LocalDateDoubleTimeSeries.empty();
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
-    ImmutableRatesProvider test_gbp_up = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test_gbp_up = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP_UP, USD, DISCOUNT_CURVE_USD))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP_UP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
-    ImmutableRatesProvider test_gbp_dw = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test_gbp_dw = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP_DOWN, USD, DISCOUNT_CURVE_USD))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP_DOWN)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
-    ImmutableRatesProvider test_usd_up = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test_usd_up = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD_UP))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD_UP)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
-    ImmutableRatesProvider test_usd_dw = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider test_usd_dw = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD_DOWN))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, ts))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD_DOWN)
+        .fxIndexTimeSeries(WM_GBP_USD, ts)
         .build();
     LocalDate matuirtyDate = WM_GBP_USD.calculateMaturityFromFixing(VAL_DATE);
     double maturityTime = DAY_COUNT.relativeYearFraction(VAL_DATE, matuirtyDate);
@@ -306,14 +306,13 @@ public class ImmutableRatesProviderParameterSensitivityTest {
     NaturalCubicSplineInterpolator1D interp = Interpolator1DFactory.NATURAL_CUBIC_SPLINE_INSTANCE;
     String curveName = "GB_RPI_CURVE";
     InterpolatedNodalCurve interpCurve = InterpolatedNodalCurve.of(Curves.prices(curveName), x, y, interp);
-    PriceIndexValues values = ForwardPriceIndexValues.of(
+    PriceIndexValues gbRpi = ForwardPriceIndexValues.of(
         GB_RPI,
         valuationMonth,
         LocalDateDoubleTimeSeries.of(date(2013, 11, 30), 200),
         interpCurve);
-    ImmutableRatesProvider provider = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .priceIndexValues(ImmutableMap.of(GB_RPI, values))
+    ImmutableRatesProvider provider = ImmutableRatesProvider.builder(VAL_DATE)
+        .priceIndexValues(gbRpi)
         .build();
 
     double pointSensiValue = 2.5;

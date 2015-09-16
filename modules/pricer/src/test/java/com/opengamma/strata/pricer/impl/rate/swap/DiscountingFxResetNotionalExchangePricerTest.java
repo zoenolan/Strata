@@ -21,7 +21,6 @@ import java.time.LocalDate;
 
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableMap;
 import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
@@ -86,11 +85,11 @@ public class DiscountingFxResetNotionalExchangePricerTest {
 
   //-------------------------------------------------------------------------
   public void test_presentValueSensitivity() {
-    ImmutableRatesProvider prov = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider prov = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, EMPTY_TIME_SERIES))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
+        .fxIndexTimeSeries(WM_GBP_USD, EMPTY_TIME_SERIES)
         .build();
     FxResetNotionalExchange[] expanded =
         new FxResetNotionalExchange[] {FX_RESET_NOTIONAL_EXCHANGE_REC_USD, FX_RESET_NOTIONAL_EXCHANGE_PAY_GBP};
@@ -119,11 +118,11 @@ public class DiscountingFxResetNotionalExchangePricerTest {
 
   //-------------------------------------------------------------------------
   public void test_futureValueSensitivity() {
-    ImmutableRatesProvider prov = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
+    ImmutableRatesProvider prov = ImmutableRatesProvider.builder(VAL_DATE)
         .fxMatrix(FX_MATRIX)
-        .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP, USD, DISCOUNT_CURVE_USD))
-        .timeSeries(ImmutableMap.of(WM_GBP_USD, EMPTY_TIME_SERIES))
+        .discountCurve(GBP, DISCOUNT_CURVE_GBP)
+        .discountCurve(USD, DISCOUNT_CURVE_USD)
+        .fxIndexTimeSeries(WM_GBP_USD, EMPTY_TIME_SERIES)
         .build();
     FxResetNotionalExchange[] expanded =
         new FxResetNotionalExchange[] {FX_RESET_NOTIONAL_EXCHANGE_REC_USD, FX_RESET_NOTIONAL_EXCHANGE_PAY_GBP};

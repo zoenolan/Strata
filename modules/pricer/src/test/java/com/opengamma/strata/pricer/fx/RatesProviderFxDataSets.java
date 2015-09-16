@@ -12,7 +12,6 @@ import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
 
 import java.time.LocalDate;
 
-import com.google.common.collect.ImmutableMap;
 import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyPair;
@@ -23,7 +22,6 @@ import com.opengamma.strata.basics.index.FxIndex;
 import com.opengamma.strata.basics.index.ImmutableFxIndex;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
-import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
@@ -95,28 +93,22 @@ public class RatesProviderFxDataSets {
    * @return the provider
    */
   public static RatesProvider createProvider() {
-    return ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE_2014_01_22)
-        .discountCurves(ImmutableMap.<Currency, Curve>builder()
-            .put(EUR, EUR_DSC)
-            .put(USD, USD_DSC)
-            .put(GBP, GBP_DSC)
-            .put(KRW, KRW_DSC)
-            .build())
+    return ImmutableRatesProvider.builder(VAL_DATE_2014_01_22)
         .fxMatrix(FX_MATRIX)
-        .timeSeries(ImmutableMap.of(INDEX_USD_KRW, LocalDateDoubleTimeSeries.empty()))
+        .discountCurve(EUR, EUR_DSC)
+        .discountCurve(USD, USD_DSC)
+        .discountCurve(GBP, GBP_DSC)
+        .discountCurve(KRW, KRW_DSC)
+        .fxIndexTimeSeries(INDEX_USD_KRW, LocalDateDoubleTimeSeries.empty())
         .build();
   }
 
   public static RatesProvider createProviderEURUSD() {
     FxMatrix fxMatrix = FxMatrix.builder().addRate(USD, EUR, 1.0d / EUR_USD).build();
-    return ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE_2014_01_22)
-        .discountCurves(ImmutableMap.<Currency, Curve>builder()
-            .put(EUR, EUR_DSC)
-            .put(USD, USD_DSC)
-            .build())
+    return ImmutableRatesProvider.builder(VAL_DATE_2014_01_22)
         .fxMatrix(fxMatrix)
+        .discountCurve(EUR, EUR_DSC)
+        .discountCurve(USD, USD_DSC)
         .build();
   }
 

@@ -24,13 +24,13 @@ import com.opengamma.strata.finance.rate.swap.ExpandedSwap;
 import com.opengamma.strata.finance.rate.swap.Swap;
 import com.opengamma.strata.finance.rate.swap.SwapTrade;
 import com.opengamma.strata.function.calculation.rate.MarketDataUtils;
-import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.NodalCurve;
-import com.opengamma.strata.market.key.DiscountCurveKey;
+import com.opengamma.strata.market.key.DiscountFactorsKey;
 import com.opengamma.strata.market.key.MarketDataKeys;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.pricer.sensitivity.CurveGammaCalculator;
 
@@ -65,31 +65,24 @@ public class SwapBucketedGammaPv01Function
       ExpandedSwap expandedSwap,
       SingleCalculationMarketData marketData) {
 
-    // find the curve and check it is valid
+    // find the curve and check it is valid, using cast method for better error message
     if (swap.isCrossCurrency()) {
       throw new IllegalArgumentException("Implementation only supports a single curve, but swap is cross-currency");
     }
     Currency currency = swap.getLegs().get(0).getCurrency();
-    NodalCurve nodalCurve = findNodalCurve(marketData, currency);
+    ZeroRateDiscountFactors baseDf = ZeroRateDiscountFactors.class.cast(marketData.getValue(DiscountFactorsKey.of(currency)));
+    NodalCurve baseCurve = baseDf.getCurve().toNodalCurve();
 
     // find indices and validate there is only one curve
     Set<Index> indices = swap.allIndices();
-    validateSingleCurve(indices, marketData, nodalCurve);
+    validateSingleCurve(indices, marketData, baseCurve);
 
     // calculate gamma
     CurveCurrencyParameterSensitivity gamma = CurveGammaCalculator.DEFAULT.calculateSemiParallelGamma(
-        nodalCurve, currency, c -> calculateCurveSensitivity(expandedSwap, currency, indices, marketData, c));
+        baseCurve,
+        currency,
+        c -> calculateCurveSensitivity(expandedSwap, baseDf, marketData, indices, c));
     return CurveCurrencyParameterSensitivities.of(gamma).multipliedBy(ONE_BASIS_POINT * ONE_BASIS_POINT);
-  }
-
-  // finds the discount curve and ensures it is a NodalCurve
-  private NodalCurve findNodalCurve(SingleCalculationMarketData marketData, Currency currency) {
-    Curve curve = marketData.getValue(DiscountCurveKey.of(currency));
-    if (!(curve instanceof NodalCurve)) {
-      throw new IllegalArgumentException(Messages.format(
-          "Implementation only supports nodal curves; unsupported curve type: {}", curve.getClass().getSimpleName()));
-    }
-    return (NodalCurve) curve;
   }
 
   // validates that the indices all resolve to the single specified curve
@@ -108,12 +101,12 @@ public class SwapBucketedGammaPv01Function
   // calculates the sensitivity
   private CurveCurrencyParameterSensitivity calculateCurveSensitivity(
       ExpandedSwap expandedSwap,
-      Currency currency,
-      Set<? extends Index> indices,
+      ZeroRateDiscountFactors baseDf,
       SingleCalculationMarketData marketData,
-      NodalCurve bumpedCurve) {
+      Set<? extends Index> indices,
+      NodalCurve bumped) {
 
-    RatesProvider ratesProvider = MarketDataUtils.toSingleCurveRatesProvider(marketData, currency, indices, bumpedCurve);
+    RatesProvider ratesProvider = MarketDataUtils.toSingleCurveRatesProvider(marketData, indices, baseDf.withCurve(bumped));
     PointSensitivities pointSensitivities = pricer().presentValueSensitivity(expandedSwap, ratesProvider).build();
     CurveCurrencyParameterSensitivities paramSensitivities = ratesProvider.curveParameterSensitivity(pointSensitivities);
     return Iterables.getOnlyElement(paramSensitivities.getSensitivities());

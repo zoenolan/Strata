@@ -233,15 +233,15 @@ public class SwapCrossCurrencyEnd2EndTest {
 
   // rates provider
   private static RatesProvider provider() {
-    return ImmutableRatesProvider.builder()
-        .valuationDate(LocalDate.of(2014, 1, 22))
+    return ImmutableRatesProvider.builder(LocalDate.of(2014, 1, 22))
         .fxMatrix(FX_MATRIX)
         .discountCurves(Legacy.discountCurves(MULTICURVE))
-        .indexCurves(Legacy.indexCurves(MULTICURVE))
-        .timeSeries(ImmutableMap.of(
-            USD_LIBOR_3M, TS_EMPTY,
-            EUR_EURIBOR_3M, TS_EMPTY,
-            WM_EUR_USD, TS_EMPTY))
+        .indexCurves(
+            Legacy.indexCurves(MULTICURVE),
+            ImmutableMap.of(
+                USD_LIBOR_3M, TS_EMPTY,
+                EUR_EURIBOR_3M, TS_EMPTY))
+        .fxIndexTimeSeries(WM_EUR_USD, TS_EMPTY)
         .build();
   }
 

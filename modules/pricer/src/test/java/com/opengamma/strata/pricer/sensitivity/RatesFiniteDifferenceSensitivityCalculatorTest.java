@@ -8,18 +8,18 @@ package com.opengamma.strata.pricer.sensitivity;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static org.testng.Assert.assertEquals;
 
-import java.util.Map.Entry;
-
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableMap;
-import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
-import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.collect.ArgChecker;
-import com.opengamma.strata.market.curve.Curve;
-import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
+import com.opengamma.strata.market.curve.NodalCurve;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
+import com.opengamma.strata.market.value.DiscountFactors;
+import com.opengamma.strata.market.value.DiscountIborIndexRates;
+import com.opengamma.strata.market.value.DiscountOvernightIndexRates;
+import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.market.value.OvernightIndexRates;
+import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.datasets.RatesProviderDataSets;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 
@@ -73,22 +73,24 @@ public class RatesFiniteDifferenceSensitivityCalculatorTest {
   private CurrencyAmount fn(ImmutableRatesProvider provider) {
     double result = 0.0;
     // Currency
-    ImmutableMap<Currency, Curve> mapCurrency = provider.getDiscountCurves();
-    for (Entry<Currency, Curve> entry : mapCurrency.entrySet()) {
-      InterpolatedNodalCurve curveInt = checkInterpolated(entry.getValue());
+    for (DiscountFactors df : provider.getDiscountFactors().values()) {
+      NodalCurve curveInt = checkInterpolated(df);
       result += sumProduct(curveInt);
     }
     // Index
-    ImmutableMap<Index, Curve> mapIndex = provider.getIndexCurves();
-    for (Entry<Index, Curve> entry : mapIndex.entrySet()) {
-      InterpolatedNodalCurve curveInt = checkInterpolated(entry.getValue());
+    for (IborIndexRates rates : provider.getIborIndexRates().values()) {
+      NodalCurve curveInt = checkInterpolated(rates);
+      result += sumProduct(curveInt);
+    }
+    for (OvernightIndexRates rates : provider.getOvernightIndexRates().values()) {
+      NodalCurve curveInt = checkInterpolated(rates);
       result += sumProduct(curveInt);
     }
     return CurrencyAmount.of(USD, result);
   }
 
   // compute the sum of the product of times and rates
-  private double sumProduct(InterpolatedNodalCurve curveInt) {
+  private double sumProduct(NodalCurve curveInt) {
     double result = 0.0;
     double[] x = curveInt.getXValues();
     double[] y = curveInt.getYValues();
@@ -100,9 +102,22 @@ public class RatesFiniteDifferenceSensitivityCalculatorTest {
   }
 
   // check that the curve is InterpolatedNodalCurve
-  private InterpolatedNodalCurve checkInterpolated(Curve curve) {
-    ArgChecker.isTrue(curve instanceof InterpolatedNodalCurve, "Curve should be a InterpolatedNodalCurve");
-    return (InterpolatedNodalCurve) curve;
+  private NodalCurve checkInterpolated(DiscountFactors df) {
+    ZeroRateDiscountFactors zrdf = (ZeroRateDiscountFactors) df;
+    ArgChecker.isTrue(zrdf.getCurve() instanceof NodalCurve, "Curve should be a NodalCurve");
+    return (NodalCurve) zrdf.getCurve();
+  }
+
+  // check that the curve is InterpolatedNodalCurve
+  private NodalCurve checkInterpolated(IborIndexRates rates) {
+    DiscountIborIndexRates drates = (DiscountIborIndexRates) rates;
+    return checkInterpolated(drates.getDiscountFactors());
+  }
+
+  // check that the curve is InterpolatedNodalCurve
+  private NodalCurve checkInterpolated(OvernightIndexRates rates) {
+    DiscountOvernightIndexRates drates = (DiscountOvernightIndexRates) rates;
+    return checkInterpolated(drates.getDiscountFactors());
   }
 
 }

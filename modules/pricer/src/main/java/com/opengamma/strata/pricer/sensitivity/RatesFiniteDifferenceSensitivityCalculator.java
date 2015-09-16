@@ -5,19 +5,20 @@
  */
 package com.opengamma.strata.pricer.sensitivity;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
-import org.joda.beans.MetaProperty;
-
 import com.opengamma.strata.basics.currency.CurrencyAmount;
+import com.opengamma.strata.basics.market.Perturbation;
 import com.opengamma.strata.market.curve.Curve;
-import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.curve.NodalCurve;
+import com.opengamma.strata.market.curve.perturb.IndexedCurvePointShift;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivity;
+import com.opengamma.strata.market.value.DiscountFactors;
+import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.market.value.OvernightIndexRates;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 
 /**
@@ -65,44 +66,82 @@ public class RatesFiniteDifferenceSensitivityCalculator {
       Function<ImmutableRatesProvider, CurrencyAmount> valueFn) {
 
     CurrencyAmount valueInit = valueFn.apply(provider);
-    CurveCurrencyParameterSensitivities discounting = sensitivity(
-        provider, valueFn, ImmutableRatesProvider.meta().discountCurves(), valueInit);
-    CurveCurrencyParameterSensitivities forward = sensitivity(
-        provider, valueFn, ImmutableRatesProvider.meta().indexCurves(), valueInit);
+    CurveCurrencyParameterSensitivities discounting = discountSensitivity(provider, valueFn, valueInit);
+    CurveCurrencyParameterSensitivities forward = indexSensitivity(provider, valueFn, valueInit);
     return discounting.combinedWith(forward);
   }
 
   // computes the sensitivity with respect to the curves
-  private <T> CurveCurrencyParameterSensitivities sensitivity(
+  private CurveCurrencyParameterSensitivities discountSensitivity(
       ImmutableRatesProvider provider,
       Function<ImmutableRatesProvider, CurrencyAmount> valueFn,
-      MetaProperty<? extends Map<T, Curve>> metaProperty,
-      CurrencyAmount valueInit) {
+      CurrencyAmount baseAmount) {
 
-    Map<T, Curve> baseCurves = metaProperty.get(provider);
-    CurveCurrencyParameterSensitivities result = CurveCurrencyParameterSensitivities.empty();
-    for (Entry<T, Curve> entry : baseCurves.entrySet()) {
-      NodalCurve curveInt = entry.getValue().toNodalCurve();
-      int nbNodePoint = curveInt.getXValues().length;
-      double[] sensitivity = new double[nbNodePoint];
-      for (int i = 0; i < nbNodePoint; i++) {
-        Curve dscBumped = bumpedCurve(curveInt, i);
-        Map<T, Curve> mapBumped = new HashMap<>(baseCurves);
-        mapBumped.put(entry.getKey(), dscBumped);
-        ImmutableRatesProvider providerDscBumped = provider.toBuilder().set(metaProperty, mapBumped).build();
-        sensitivity[i] = (valueFn.apply(providerDscBumped).getAmount() - valueInit.getAmount()) / shift;
-      }
-      CurveMetadata metadata = entry.getValue().getMetadata();
-      result = result.combinedWith(CurveCurrencyParameterSensitivity.of(metadata, valueInit.getCurrency(), sensitivity));
+    // use Perturbation to access Curve in order to mutate this list
+    List<CurveCurrencyParameterSensitivity> result = new ArrayList<>();
+    for (DiscountFactors baseDf : provider.getDiscountFactors().values()) {
+      baseDf.applyPerturbation(new Perturbation<Curve>() {
+        @Override
+        public Curve applyTo(Curve baseCurve) {
+          int size = baseCurve.getParameterCount();
+          double[] sensitivity = new double[size];
+          for (int i = 0; i < size; i++) {
+            DiscountFactors bumped = baseDf.applyPerturbation(IndexedCurvePointShift.absolute(i, shift));
+            ImmutableRatesProvider providerDscBumped = provider.toBuilder().discountFactors(bumped).build();
+            CurrencyAmount bumpedAmount = valueFn.apply(providerDscBumped);
+            sensitivity[i] = (bumpedAmount.getAmount() - baseAmount.getAmount()) / shift;
+          }
+          result.add(CurveCurrencyParameterSensitivity.of(baseCurve.getMetadata(), baseAmount.getCurrency(), sensitivity));
+          return baseCurve;
+        }
+      });
     }
-    return result;
+    return CurveCurrencyParameterSensitivities.of(result);
   }
 
-  // create new curve by bumping the existing curve at a given parameter
-  private NodalCurve bumpedCurve(NodalCurve curveInt, int loopnode) {
-    double[] yieldBumped = curveInt.getYValues();
-    yieldBumped[loopnode] += shift;
-    return curveInt.withYValues(yieldBumped);
+  // computes the sensitivity with respect to the curves
+  private CurveCurrencyParameterSensitivities indexSensitivity(
+      ImmutableRatesProvider provider,
+      Function<ImmutableRatesProvider, CurrencyAmount> valueFn,
+      CurrencyAmount baseAmount) {
+
+    // use Perturbation to access Curve in order to mutate this list
+    List<CurveCurrencyParameterSensitivity> result = new ArrayList<>();
+    for (IborIndexRates baseRates : provider.getIborIndexRates().values()) {
+      baseRates.applyPerturbation(new Perturbation<Curve>() {
+        @Override
+        public Curve applyTo(Curve baseCurve) {
+          int size = baseCurve.getParameterCount();
+          double[] sensitivity = new double[size];
+          for (int i = 0; i < size; i++) {
+            IborIndexRates bumped = baseRates.applyPerturbation(IndexedCurvePointShift.absolute(i, shift));
+            ImmutableRatesProvider providerDscBumped = provider.toBuilder().iborIndexRates(bumped).build();
+            CurrencyAmount bumpedAmount = valueFn.apply(providerDscBumped);
+            sensitivity[i] = (bumpedAmount.getAmount() - baseAmount.getAmount()) / shift;
+          }
+          result.add(CurveCurrencyParameterSensitivity.of(baseCurve.getMetadata(), baseAmount.getCurrency(), sensitivity));
+          return baseCurve;
+        }
+      });
+    }
+    for (OvernightIndexRates baseRates : provider.getOvernightIndexRates().values()) {
+      baseRates.applyPerturbation(new Perturbation<Curve>() {
+        @Override
+        public Curve applyTo(Curve baseCurve) {
+          int size = baseCurve.getParameterCount();
+          double[] sensitivity = new double[size];
+          for (int i = 0; i < size; i++) {
+            OvernightIndexRates bumped = baseRates.applyPerturbation(IndexedCurvePointShift.absolute(i, shift));
+            ImmutableRatesProvider providerDscBumped = provider.toBuilder().overnightIndexRates(bumped).build();
+            CurrencyAmount bumpedAmount = valueFn.apply(providerDscBumped);
+            sensitivity[i] = (bumpedAmount.getAmount() - baseAmount.getAmount()) / shift;
+          }
+          result.add(CurveCurrencyParameterSensitivity.of(baseCurve.getMetadata(), baseAmount.getCurrency(), sensitivity));
+          return baseCurve;
+        }
+      });
+    }
+    return CurveCurrencyParameterSensitivities.of(result);
   }
 
 }

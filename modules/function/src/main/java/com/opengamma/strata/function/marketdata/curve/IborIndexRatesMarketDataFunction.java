@@ -21,6 +21,7 @@ import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.id.IborIndexRatesId;
 import com.opengamma.strata.market.id.IndexRateId;
 import com.opengamma.strata.market.id.RateIndexCurveId;
+import com.opengamma.strata.market.value.DiscountFactors;
 import com.opengamma.strata.market.value.DiscountIborIndexRates;
 import com.opengamma.strata.market.value.IborIndexRates;
 import com.opengamma.strata.market.value.SimpleDiscountFactors;
@@ -87,21 +88,10 @@ public class IborIndexRatesMarketDataFunction
       LocalDateDoubleTimeSeries timeSeries,
       Curve curve) {
 
-    ValueType yValueType = curve.getMetadata().getYValueType();
-    if (ValueType.ZERO_RATE.equals(yValueType)) {
-      ZeroRateDiscountFactors df = ZeroRateDiscountFactors.of(index.getCurrency(), valuationDate, curve);
-      return Result.success(DiscountIborIndexRates.of(index, timeSeries, df));
-
-    } else if (ValueType.DISCOUNT_FACTOR.equals(yValueType)) {
-      SimpleDiscountFactors df = SimpleDiscountFactors.of(index.getCurrency(), valuationDate, curve);
-      return Result.success(DiscountIborIndexRates.of(index, timeSeries, df));
-
-    } else {
-      return Result.failure(
-          FailureReason.MISSING_DATA,
-          "Invalid curve, must have ValueType of 'ZeroRate' or 'DiscountFactor', but was: {}",
-          yValueType);
-    }
+    return Result.of(() -> {
+      DiscountFactors df = DiscountFactors.of(index.getCurrency(), valuationDate, curve);
+      return DiscountIborIndexRates.of(index, timeSeries, df);
+    });
   }
 
   @Override
