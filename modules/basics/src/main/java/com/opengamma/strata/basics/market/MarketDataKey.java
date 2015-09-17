@@ -22,6 +22,8 @@ package com.opengamma.strata.basics.market;
  * A more complex system may have multiple values associated, which will involve a mapping
  * step to convert the {@code MarketDataKey} to a {@link MarketDataId}.
  * For example, the mapping step might involve selecting the curve group which supplied a curve.
+ * <p>
+ * The market data referred to by this key may implement {@link MarketDataValue}, however this is not required.
  *
  * @param <T>  the type of the market data identified by the key
  */

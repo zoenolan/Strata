@@ -8,10 +8,12 @@ package com.opengamma.strata.market.value;
 import java.time.LocalDate;
 
 import com.opengamma.strata.basics.index.IborIndex;
+import com.opengamma.strata.basics.market.MarketDataValue;
 import com.opengamma.strata.basics.market.Perturbation;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveName;
+import com.opengamma.strata.market.key.IborIndexRatesKey;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveUnitParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.IborRateSensitivity;
@@ -22,7 +24,30 @@ import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
  * <p>
  * This provides historic and forward rates for a single {@link IborIndex}, such as 'GBP-LIBOR-3M'.
  */
-public interface IborIndexRates {
+public interface IborIndexRates
+    extends MarketDataValue<IborIndexRates> {
+
+  /**
+   * Gets the market data key.
+   * <p>
+   * This returns the {@link IborIndexRatesKey} that identifies this instance.
+   * 
+   * @return the market data key
+   */
+  @Override
+  public default IborIndexRatesKey getKey() {
+    return IborIndexRatesKey.of(getIndex());
+  }
+
+  /**
+   * Gets the valuation date.
+   * <p>
+   * The raw data in this provider is calibrated for this date.
+   * 
+   * @return the valuation date
+   */
+  @Override
+  public abstract LocalDate getValuationDate();
 
   /**
    * Gets the Ibor index.
@@ -32,15 +57,6 @@ public interface IborIndexRates {
    * @return the Ibor index
    */
   public abstract IborIndex getIndex();
-
-  /**
-   * Gets the valuation date.
-   * <p>
-   * The raw data in this provider is calibrated for this date.
-   * 
-   * @return the valuation date
-   */
-  public abstract LocalDate getValuationDate();
 
   /**
    * Gets the time-series of fixings for the index.

@@ -8,11 +8,13 @@ package com.opengamma.strata.market.value;
 import java.time.LocalDate;
 
 import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.market.MarketDataValue;
 import com.opengamma.strata.basics.market.Perturbation;
 import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
+import com.opengamma.strata.market.key.DiscountFactorsKey;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveUnitParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.ZeroRateSensitivity;
@@ -23,9 +25,9 @@ import com.opengamma.strata.market.sensitivity.ZeroRateSensitivity;
  * The discount factor represents the time value of money for the specified currency
  * when comparing the valuation date to the specified date.
  */
-public interface DiscountFactors {
+public interface DiscountFactors
+    extends MarketDataValue<DiscountFactors> {
 
-  //-------------------------------------------------------------------------
   /**
    * Creates a new discount factors instance from a curve.
    * <p>
@@ -53,13 +55,16 @@ public interface DiscountFactors {
 
   //-------------------------------------------------------------------------
   /**
-   * Gets the currency.
+   * Gets the market data key.
    * <p>
-   * The currency that discount factors are provided for.
+   * This returns the {@link DiscountFactorsKey} that identifies this instance.
    * 
-   * @return the currency
+   * @return the market data key
    */
-  public abstract Currency getCurrency();
+  @Override
+  public default DiscountFactorsKey getKey() {
+    return DiscountFactorsKey.of(getCurrency());
+  }
 
   /**
    * Gets the valuation date.
@@ -68,7 +73,17 @@ public interface DiscountFactors {
    * 
    * @return the valuation date
    */
+  @Override
   public abstract LocalDate getValuationDate();
+
+  /**
+   * Gets the currency.
+   * <p>
+   * The currency that discount factors are provided for.
+   * 
+   * @return the currency
+   */
+  public abstract Currency getCurrency();
 
   /**
    * Gets the name of the underlying curve.
