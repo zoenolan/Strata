@@ -11,15 +11,17 @@ import java.util.concurrent.Executors;
 import com.opengamma.strata.collect.id.LinkResolver;
 import com.opengamma.strata.engine.CalculationEngine;
 import com.opengamma.strata.engine.DefaultCalculationEngine;
-import com.opengamma.strata.engine.calculations.CalculationRunner;
-import com.opengamma.strata.engine.calculations.DefaultCalculationRunner;
+import com.opengamma.strata.engine.calculation.CalculationRunner;
+import com.opengamma.strata.engine.calculation.DefaultCalculationRunner;
 import com.opengamma.strata.engine.marketdata.DefaultMarketDataFactory;
 import com.opengamma.strata.engine.marketdata.MarketDataFactory;
-import com.opengamma.strata.engine.marketdata.functions.ObservableMarketDataFunction;
-import com.opengamma.strata.engine.marketdata.functions.TimeSeriesProvider;
+import com.opengamma.strata.engine.marketdata.function.ObservableMarketDataFunction;
+import com.opengamma.strata.engine.marketdata.function.TimeSeriesProvider;
 import com.opengamma.strata.engine.marketdata.mapping.FeedIdMapping;
 import com.opengamma.strata.examples.marketdata.ExampleMarketData;
 import com.opengamma.strata.function.marketdata.curve.DiscountFactorsMarketDataFunction;
+import com.opengamma.strata.function.marketdata.curve.IborIndexRatesMarketDataFunction;
+import com.opengamma.strata.function.marketdata.curve.OvernightIndexRatesMarketDataFunction;
 
 /**
  * Contains utility methods for obtaining a calculation engine configured for use
@@ -55,7 +57,9 @@ public final class ExampleEngine {
         TimeSeriesProvider.none(),
         ObservableMarketDataFunction.none(),
         FeedIdMapping.identity(),
-        new DiscountFactorsMarketDataFunction());
+        new DiscountFactorsMarketDataFunction(),
+        new IborIndexRatesMarketDataFunction(),
+        new OvernightIndexRatesMarketDataFunction());
 
     // combine the runner and market data factory
     return new DefaultCalculationEngine(calcRunner, marketDataFactory, LinkResolver.none());

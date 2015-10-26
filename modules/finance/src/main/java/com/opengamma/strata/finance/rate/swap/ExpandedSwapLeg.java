@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -33,6 +34,7 @@ import com.google.common.collect.Iterables;
 import com.opengamma.strata.basics.PayReceive;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.index.Index;
+import com.opengamma.strata.collect.ArgChecker;
 
 /**
  * An expanded swap leg, with dates calculated ready for pricing.
@@ -86,14 +88,14 @@ public final class ExpandedSwapLeg
    * The start date and end date of the leg are determined from the first and last period.
    * As such, the periods should be sorted.
    */
-  @PropertyDefinition(validate = "notEmpty")
+  @PropertyDefinition(validate = "notEmpty", builderType = "List<? extends PaymentPeriod>")
   private final ImmutableList<PaymentPeriod> paymentPeriods;
   /**
    * The payment events that are associated with the swap leg.
    * <p>
    * Payment events include notional exchange and fees.
    */
-  @PropertyDefinition(validate = "notNull")
+  @PropertyDefinition(validate = "notNull", builderType = "List<? extends PaymentEvent>")
   private final ImmutableList<PaymentEvent> paymentEvents;
   /**
    * The currency of the leg.
@@ -105,15 +107,11 @@ public final class ExpandedSwapLeg
   private ExpandedSwapLeg(
       SwapLegType type,
       PayReceive payReceive,
-      List<PaymentPeriod> paymentPeriods,
-      List<PaymentEvent> paymentEvents) {
+      List<? extends PaymentPeriod> paymentPeriods,
+      List<? extends PaymentEvent> paymentEvents) {
 
-    JodaBeanUtils.notNull(type, "type");
-    JodaBeanUtils.notNull(payReceive, "payReceive");
-    JodaBeanUtils.notEmpty(paymentPeriods, "paymentPeriods");
-    JodaBeanUtils.notNull(paymentEvents, "paymentEvents");
-    this.type = type;
-    this.payReceive = payReceive;
+    this.type = ArgChecker.notNull(type, "type");
+    this.payReceive = ArgChecker.notNull(payReceive, "payReceive");
     this.paymentPeriods = ImmutableList.copyOf(paymentPeriods);
     this.paymentEvents = ImmutableList.copyOf(paymentEvents);
     // determine and validate currency, with explicit error message
@@ -166,6 +164,21 @@ public final class ExpandedSwapLeg
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Finds the payment period applicable on the specified date.
+   * <p>
+   * Each payment period is considered to contain the end date but not the start date.
+   * If no payment period contains the date, an empty optional is returned.
+   * 
+   * @param date  the date to find
+   * @return the payment period applicable at the date
+   */
+  public Optional<PaymentPeriod> findPaymentPeriod(LocalDate date) {
+    return paymentPeriods.stream()
+        .filter(period -> period.getStartDate().compareTo(date) < 0 && date.compareTo(period.getEndDate()) <= 0)
+        .findFirst();
+  }
+
   @Override
   public void collectIndices(ImmutableSet.Builder<Index> builder) {
     paymentPeriods.stream().forEach(period -> period.collectIndices(builder));
@@ -471,8 +484,8 @@ public final class ExpandedSwapLeg
 
     private SwapLegType type;
     private PayReceive payReceive;
-    private List<PaymentPeriod> paymentPeriods = ImmutableList.of();
-    private List<PaymentEvent> paymentEvents = ImmutableList.of();
+    private List<? extends PaymentPeriod> paymentPeriods = ImmutableList.of();
+    private List<? extends PaymentEvent> paymentEvents = ImmutableList.of();
 
     /**
      * Restricted constructor.
@@ -519,10 +532,10 @@ public final class ExpandedSwapLeg
           this.payReceive = (PayReceive) newValue;
           break;
         case -1674414612:  // paymentPeriods
-          this.paymentPeriods = (List<PaymentPeriod>) newValue;
+          this.paymentPeriods = (List<? extends PaymentPeriod>) newValue;
           break;
         case 1031856831:  // paymentEvents
-          this.paymentEvents = (List<PaymentEvent>) newValue;
+          this.paymentEvents = (List<? extends PaymentEvent>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -607,7 +620,7 @@ public final class ExpandedSwapLeg
      * @param paymentPeriods  the new value, not empty
      * @return this, for chaining, not null
      */
-    public Builder paymentPeriods(List<PaymentPeriod> paymentPeriods) {
+    public Builder paymentPeriods(List<? extends PaymentPeriod> paymentPeriods) {
       JodaBeanUtils.notEmpty(paymentPeriods, "paymentPeriods");
       this.paymentPeriods = paymentPeriods;
       return this;
@@ -630,7 +643,7 @@ public final class ExpandedSwapLeg
      * @param paymentEvents  the new value, not null
      * @return this, for chaining, not null
      */
-    public Builder paymentEvents(List<PaymentEvent> paymentEvents) {
+    public Builder paymentEvents(List<? extends PaymentEvent> paymentEvents) {
       JodaBeanUtils.notNull(paymentEvents, "paymentEvents");
       this.paymentEvents = paymentEvents;
       return this;

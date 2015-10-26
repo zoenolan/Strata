@@ -5,19 +5,22 @@
  */
 package com.opengamma.strata.pricer.rate.swap;
 
-import static com.opengamma.strata.basics.PayReceive.RECEIVE;
 import static com.opengamma.strata.basics.BuySell.BUY;
+import static com.opengamma.strata.basics.PayReceive.RECEIVE;
 import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_FOLLOWING;
 import static com.opengamma.strata.basics.date.HolidayCalendars.GBLO;
+import static com.opengamma.strata.basics.date.Tenor.TENOR_5Y;
 import static com.opengamma.strata.basics.index.IborIndices.GBP_LIBOR_3M;
 import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
 import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_6M;
 import static com.opengamma.strata.basics.index.PriceIndices.GB_RPI;
-import static com.opengamma.strata.finance.rate.swap.type.FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M;
 import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.date;
+import static com.opengamma.strata.finance.rate.swap.type.FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M;
+import static com.opengamma.strata.finance.rate.swap.type.IborIborSwapConventions.USD_LIBOR_3M_LIBOR_6M;
+import static com.opengamma.strata.pricer.datasets.RatesProviderDataSets.MULTI_USD;
 import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.FIXED_EXPANDED_SWAP_LEG_PAY;
 import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.FIXED_EXPANDED_SWAP_LEG_PAY_USD;
 import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.FIXED_RATE_PAYMENT_PERIOD_PAY_GBP;
@@ -36,8 +39,6 @@ import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.SWAP_CROSS_CUR
 import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.SWAP_INFLATION;
 import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.SWAP_TRADE;
 import static com.opengamma.strata.pricer.rate.swap.SwapDummyData.SWAP_TRADE_CROSS_CURRENCY;
-import static com.opengamma.strata.basics.date.Tenor.TENOR_5Y;
-import static com.opengamma.strata.pricer.datasets.RatesProviderDataSets.MULTI_USD;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
@@ -51,7 +52,6 @@ import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
@@ -63,6 +63,7 @@ import com.opengamma.strata.basics.interpolator.CurveInterpolator;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.value.ValueSchedule;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.finance.rate.swap.CompoundingMethod;
 import com.opengamma.strata.finance.rate.swap.ExpandedSwap;
@@ -74,6 +75,7 @@ import com.opengamma.strata.finance.rate.swap.PaymentPeriod;
 import com.opengamma.strata.finance.rate.swap.PaymentSchedule;
 import com.opengamma.strata.finance.rate.swap.RateCalculationSwapLeg;
 import com.opengamma.strata.finance.rate.swap.Swap;
+import com.opengamma.strata.finance.rate.swap.SwapLeg;
 import com.opengamma.strata.finance.rate.swap.SwapTrade;
 import com.opengamma.strata.finance.rate.swap.type.FixedIborSwapTemplate;
 import com.opengamma.strata.finance.rate.swap.type.IborIborSwapConvention;
@@ -92,6 +94,7 @@ import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.market.sensitivity.ZeroRateSensitivity;
 import com.opengamma.strata.market.value.ForwardPriceIndexValues;
 import com.opengamma.strata.market.value.PriceIndexValues;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.datasets.RatesProviderDataSets;
 import com.opengamma.strata.pricer.impl.MockRatesProvider;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
@@ -129,8 +132,8 @@ public class DiscountingSwapProductPricerTest {
       LocalDateDoubleTimeSeries.of(date(2014, 3, 31), START_INDEX),
       InterpolatedNodalCurve.of(
           Curves.prices("GB_RPI_CURVE_FLAT"),
-          new double[] {1, 1000},
-          new double[] {CONSTANT_INDEX, CONSTANT_INDEX},
+          DoubleArray.of(1, 1000),
+          DoubleArray.of(CONSTANT_INDEX, CONSTANT_INDEX),
           INTERPOLATOR));
   
 
@@ -169,9 +172,12 @@ public class DiscountingSwapProductPricerTest {
     double pvCpnIbor = 0.99 * fwdRate * 0.25 * 1_000_000;
     when(mockPeriod.presentValue(IBOR_RATE_PAYMENT_PERIOD_REC_GBP, mockProv))
         .thenReturn(pvCpnIbor);
-    double pvCpnFixed = -0.99 * 0.0123d * 0.25 * 1_000_000;
+    double pvbpCpnFixed = -0.99 * 0.25 * 1_000_000;
+    double pvCpnFixed = 0.0123d * pvbpCpnFixed;
     when(mockPeriod.presentValue(FIXED_RATE_PAYMENT_PERIOD_PAY_GBP, mockProv))
         .thenReturn(pvCpnFixed);
+    when(mockPeriod.pvbp(FIXED_RATE_PAYMENT_PERIOD_PAY_GBP, mockProv))
+        .thenReturn(pvbpCpnFixed);
     PaymentEventPricer<PaymentEvent> mockEvent = mock(PaymentEventPricer.class);
     double pvNotional = 980_000d;
     when(mockEvent.presentValue(NOTIONAL_EXCHANGE_REC_GBP, mockProv))
@@ -265,7 +271,7 @@ public class DiscountingSwapProductPricerTest {
   }
 
   public void test_parRate_inflation_periodic() {
-    RateCalculationSwapLeg fixedLeg = RateCalculationSwapLeg.builder()
+    SwapLeg fixedLeg = RateCalculationSwapLeg.builder()
         .payReceive(RECEIVE)
         .accrualSchedule(PeriodicSchedule.builder()
             .startDate(date(2014, 6, 9))
@@ -293,7 +299,7 @@ public class DiscountingSwapProductPricerTest {
         .discountCurves(RATES_GBP.getDiscountCurves())
         .build();
     double parRateComputed = pricerSwap.parRate(swap, prov);
-    RateCalculationSwapLeg fixedLegWithParRate = RateCalculationSwapLeg.builder()
+    SwapLeg fixedLegWithParRate = RateCalculationSwapLeg.builder()
         .payReceive(RECEIVE)
         .accrualSchedule(PeriodicSchedule.builder()
             .startDate(date(2014, 6, 9))
@@ -454,6 +460,38 @@ public class DiscountingSwapProductPricerTest {
     double fvExpected = (-(CONSTANT_INDEX / START_INDEX - 1.0) + Math.pow(1.0 + fixedRate, 5) - 1.0) * NOTIONAL;
     assertTrue(fvComputed.getCurrencies().size() == 1);
     assertEquals(fvComputed.getAmount(GBP).getAmount(), fvExpected, NOTIONAL * TOLERANCE_RATE);
+  }
+
+  //-------------------------------------------------------------------------
+  public void test_accruedInterest_firstAccrualPeriod() {
+    RatesProvider prov = new MockRatesProvider(IBOR_RATE_PAYMENT_PERIOD_REC_GBP.getStartDate().plusDays(7));
+    PaymentPeriodPricer<PaymentPeriod> mockPeriod = mock(PaymentPeriodPricer.class);
+    when(mockPeriod.accruedInterest(IBOR_RATE_PAYMENT_PERIOD_REC_GBP, prov))
+        .thenReturn(1000d);
+    when(mockPeriod.accruedInterest(FIXED_RATE_PAYMENT_PERIOD_PAY_GBP, prov))
+        .thenReturn(-500d);
+    PaymentEventPricer<PaymentEvent> mockEvent = mock(PaymentEventPricer.class);
+    DiscountingSwapLegPricer pricerLeg = new DiscountingSwapLegPricer(mockPeriod, mockEvent);
+    DiscountingSwapProductPricer pricerSwap = new DiscountingSwapProductPricer(pricerLeg);
+    assertEquals(pricerSwap.accruedInterest(SWAP, prov), MultiCurrencyAmount.of(GBP, 500d));
+  }
+
+  public void test_accruedInterest_valDateBeforePeriod() {
+    RatesProvider prov = new MockRatesProvider(IBOR_RATE_PAYMENT_PERIOD_REC_GBP.getStartDate());
+    PaymentPeriodPricer<PaymentPeriod> mockPeriod = mock(PaymentPeriodPricer.class);
+    PaymentEventPricer<PaymentEvent> mockEvent = mock(PaymentEventPricer.class);
+    DiscountingSwapLegPricer pricerLeg = new DiscountingSwapLegPricer(mockPeriod, mockEvent);
+    DiscountingSwapProductPricer pricerSwap = new DiscountingSwapProductPricer(pricerLeg);
+    assertEquals(pricerSwap.accruedInterest(SWAP, prov), MultiCurrencyAmount.of(GBP, 0d));
+  }
+
+  public void test_accruedInterest_valDateAfterPeriod() {
+    RatesProvider prov = new MockRatesProvider(IBOR_RATE_PAYMENT_PERIOD_REC_GBP.getEndDate().plusDays(1));
+    PaymentPeriodPricer<PaymentPeriod> mockPeriod = mock(PaymentPeriodPricer.class);
+    PaymentEventPricer<PaymentEvent> mockEvent = mock(PaymentEventPricer.class);
+    DiscountingSwapLegPricer pricerLeg = new DiscountingSwapLegPricer(mockPeriod, mockEvent);
+    DiscountingSwapProductPricer pricerSwap = new DiscountingSwapProductPricer(pricerLeg);
+    assertEquals(pricerSwap.accruedInterest(SWAP, prov), MultiCurrencyAmount.of(GBP, 0d));
   }
 
   //-------------------------------------------------------------------------
@@ -671,14 +709,23 @@ public class DiscountingSwapProductPricerTest {
     CurrencyAmount pv0 = SWAP_PRODUCT_PRICER.presentValue(swap0.getProduct(), USD, MULTI_USD);
     assertEquals(pv0.getAmount(),  0, TOLERANCE_PV);
   }
-  
+
   public void par_spread_ibor_ibor() {
     double ps = SWAP_PRODUCT_PRICER.parSpread(SWAP_USD_LIBOR_3M_LIBOR_6M_5Y.getProduct(), MULTI_USD);
     SwapTrade swap0 = IborIborSwapTemplate
         .of(Period.ZERO, TENOR_5Y, CONV_USD_LIBOR3M_LIBOR6M)
         .toTrade(MULTI_USD.getValuationDate(), BUY, NOTIONAL_SWAP, SPREAD + ps);
     CurrencyAmount pv0 = SWAP_PRODUCT_PRICER.presentValue(swap0.getProduct(), USD, MULTI_USD);
-    assertEquals(pv0.getAmount(),  0, TOLERANCE_PV);
+    assertEquals(pv0.getAmount(), 0, TOLERANCE_PV);
+  }
+
+  public void par_spread_ibor_cmp_ibor() {
+    SwapTrade trade = USD_LIBOR_3M_LIBOR_6M.toTrade(MULTI_USD.getValuationDate(), TENOR_5Y, BUY, NOTIONAL_SWAP, SPREAD);
+    double ps = SWAP_PRODUCT_PRICER.parSpread(trade.getProduct(), MULTI_USD);
+    SwapTrade swap0 = USD_LIBOR_3M_LIBOR_6M
+        .toTrade(MULTI_USD.getValuationDate(), TENOR_5Y, BUY, NOTIONAL_SWAP, SPREAD + ps);
+    CurrencyAmount pv0 = SWAP_PRODUCT_PRICER.presentValue(swap0.getProduct(), USD, MULTI_USD);
+    assertEquals(pv0.getAmount(), 0, TOLERANCE_PV);
   }
 
   //-------------------------------------------------------------------------
@@ -690,7 +737,7 @@ public class DiscountingSwapProductPricerTest {
         MULTI_USD, p -> CurrencyAmount.of(USD, PRICER_SWAP.parSpread(expanded, p)));
     assertTrue(prAd.equalWithTolerance(prFd, TOLERANCE_RATE_DELTA));
   }
-  
+
   public void par_spread_sensitivity_ibor_ibor() {
     ExpandedSwap expanded = SWAP_USD_LIBOR_3M_LIBOR_6M_5Y.getProduct().expand();
     PointSensitivities point = PRICER_SWAP.parSpreadSensitivity(expanded, MULTI_USD).build();

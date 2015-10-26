@@ -25,10 +25,10 @@ import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.PayReceive;
 import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.date.DayCount;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.Schedule;
@@ -161,15 +161,16 @@ public final class RateCalculationSwapLeg
    */
   @Override
   public ExpandedSwapLeg expand() {
+    DayCount dayCount = calculation.getDayCount();
     Schedule resolvedAccruals = accrualSchedule.createSchedule();
     Schedule resolvedPayments = paymentSchedule.createSchedule(resolvedAccruals);
     List<RateAccrualPeriod> accrualPeriods = calculation.expand(resolvedAccruals, resolvedPayments);
     List<RatePaymentPeriod> payPeriods = paymentSchedule.createPaymentPeriods(
-        resolvedAccruals, resolvedPayments, accrualPeriods, notionalSchedule, payReceive);
+        resolvedAccruals, resolvedPayments, accrualPeriods, dayCount, notionalSchedule, payReceive);
     return ExpandedSwapLeg.builder()
         .type(getType())
         .payReceive(payReceive)
-        .paymentPeriods(ImmutableList.copyOf(payPeriods))  // copyOf changes generics of list without an actual copy
+        .paymentPeriods(payPeriods)
         .paymentEvents(notionalSchedule.createEvents(payPeriods, getStartDate()))
         .build();
   }

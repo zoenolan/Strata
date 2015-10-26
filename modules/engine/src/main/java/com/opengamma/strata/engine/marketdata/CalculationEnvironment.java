@@ -5,6 +5,7 @@
  */
 package com.opengamma.strata.engine.marketdata;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -31,8 +32,8 @@ import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.collect.result.Failure;
 import com.opengamma.strata.collect.result.FailureException;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
-import com.opengamma.strata.engine.calculations.MissingMappingId;
-import com.opengamma.strata.engine.calculations.NoMatchingRuleId;
+import com.opengamma.strata.engine.calculation.MissingMappingId;
+import com.opengamma.strata.engine.calculation.NoMatchingRuleId;
 
 /**
  * A collection of market data for a single set of calculations.
@@ -51,7 +52,7 @@ import com.opengamma.strata.engine.calculations.NoMatchingRuleId;
  * @see MarketEnvironment
  */
 @BeanDefinition(builderScope = "private", constructorScope = "package")
-public final class CalculationEnvironment implements ImmutableBean, MarketDataLookup {
+public final class CalculationEnvironment implements ImmutableBean, MarketDataLookup, Serializable {
 
   /** The valuation date associated with the data. */
   @PropertyDefinition(validate = "notNull", overrideGet = true)
@@ -188,6 +189,11 @@ public final class CalculationEnvironment implements ImmutableBean, MarketDataLo
   static {
     JodaBeanUtils.registerMetaBean(CalculationEnvironment.Meta.INSTANCE);
   }
+
+  /**
+   * The serialization version id.
+   */
+  private static final long serialVersionUID = 1L;
 
   /**
    * Creates an instance.

@@ -17,8 +17,8 @@ import java.util.Optional;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.finance.rate.InflationInterpolatedRateObservation;
 import com.opengamma.strata.market.curve.Curves;
@@ -29,6 +29,7 @@ import com.opengamma.strata.market.explain.ExplainMapBuilder;
 import com.opengamma.strata.market.sensitivity.InflationRateSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.market.value.ForwardPriceIndexValues;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 
 /**
@@ -147,8 +148,8 @@ public class ForwardInflationInterpolatedRateObservationFnTest {
     LocalDateDoubleTimeSeries timeSeries = LocalDateDoubleTimeSeries.of(VAL_MONTH.atEndOfMonth(), 300);
     InterpolatedNodalCurve curve = InterpolatedNodalCurve.of(
         Curves.prices("GB-RPIX"),
-        new double[] {4, 5, 16, 17},
-        new double[] {rateStart, rateStartInterp, rateEnd, rateEndInterp},
+        DoubleArray.of(4, 5, 16, 17),
+        DoubleArray.of(rateStart, rateStartInterp, rateEnd, rateEndInterp),
         INTERPOLATOR);
     ForwardPriceIndexValues values = ForwardPriceIndexValues.of(GB_RPIX, VAL_MONTH, timeSeries, curve);
     return ImmutableRatesProvider.builder()

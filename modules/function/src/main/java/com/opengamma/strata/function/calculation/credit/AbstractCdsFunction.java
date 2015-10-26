@@ -5,7 +5,7 @@
  */
 package com.opengamma.strata.function.calculation.credit;
 
-import static com.opengamma.strata.engine.calculations.function.FunctionUtils.toScenarioResult;
+import static com.opengamma.strata.engine.calculation.function.FunctionUtils.toScenarioResult;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -16,8 +16,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.market.MarketDataKey;
-import com.opengamma.strata.engine.calculations.DefaultSingleCalculationMarketData;
-import com.opengamma.strata.engine.calculations.function.result.ScenarioResult;
+import com.opengamma.strata.engine.calculation.DefaultSingleCalculationMarketData;
+import com.opengamma.strata.engine.calculation.function.result.ScenarioResult;
 import com.opengamma.strata.engine.marketdata.CalculationMarketData;
 import com.opengamma.strata.engine.marketdata.FunctionRequirements;
 import com.opengamma.strata.finance.credit.Cds;
@@ -39,7 +39,9 @@ import com.opengamma.strata.market.value.CdsRecoveryRate;
 import com.opengamma.strata.pricer.credit.IsdaCdsPricer;
 
 /**
- * Calculates a result of a {@code CdsTrade} for each of a set of scenarios.
+ * Perform calculations on a single {@code CdsTrade} for each of a set of scenarios.
+ * <p>
+ * The default reporting currency is determined to be the currency of the fee leg.
  * 
  * @param <T>  the return type
  */
@@ -64,8 +66,9 @@ public abstract class AbstractCdsFunction<T>
     super(convertCurrencies);
   }
 
+  //-------------------------------------------------------------------------
   /**
-   * Returns the CDS pricer.
+   * Returns the pricer.
    * 
    * @return the pricer
    */
@@ -73,7 +76,6 @@ public abstract class AbstractCdsFunction<T>
     return IsdaCdsPricer.DEFAULT;
   }
 
-  //-------------------------------------------------------------------------
   @Override
   public ScenarioResult<T> execute(CdsTrade trade, CalculationMarketData marketData) {
     return IntStream.range(0, marketData.getScenarioCount())
@@ -98,7 +100,7 @@ public abstract class AbstractCdsFunction<T>
     // TODO the only real difference between single name and index trades is how the credit curves are keyed and the
     // TODO application of an index factor. We have two switch statements currently to handle this
     // TODO we should be able to handle that a bit more gracefully, but there seems little point in duplicating
-    // TODO all of the engine functions and the entire trade model when the vast majority of behavior is common
+    // TODO all of the calculation functions and the entire trade model when the vast majority of behavior is common
     Set<MarketDataKey<?>> spreadCurveKey;
     switch (cdsType) {
       case SINGLE_NAME:
@@ -119,12 +121,6 @@ public abstract class AbstractCdsFunction<T>
         .build();
   }
 
-  /**
-   * Returns the currency of the trade.
-   *
-   * @param target  the swap that is the target of the calculation
-   * @return the currency of the CDS
-   */
   @Override
   public Optional<Currency> defaultReportingCurrency(CdsTrade target) {
     return Optional.of(target.getProduct().getFeeLeg().getPeriodicPayments().getNotional().getCurrency());

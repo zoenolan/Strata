@@ -12,7 +12,7 @@ import com.opengamma.strata.collect.result.Result;
 import com.opengamma.strata.engine.marketdata.MarketDataLookup;
 import com.opengamma.strata.engine.marketdata.MarketDataRequirements;
 import com.opengamma.strata.engine.marketdata.config.MarketDataConfig;
-import com.opengamma.strata.engine.marketdata.functions.MarketDataFunction;
+import com.opengamma.strata.engine.marketdata.function.MarketDataFunction;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveGroup;
 import com.opengamma.strata.market.id.CurveGroupId;
@@ -43,7 +43,7 @@ public final class RateIndexCurveMarketDataFunction implements MarketDataFunctio
       return Result.failure(FailureReason.MISSING_DATA, "No curve group found with name {}", id.getCurveGroupName());
     }
     CurveGroup curveGroup = marketData.getValue(curveGroupId);
-    Optional<Curve> optionalForwardCurve = curveGroup.getForwardCurve(id.getIndex());
+    Optional<Curve> optionalForwardCurve = curveGroup.findForwardCurve(id.getIndex());
 
     if (optionalForwardCurve.isPresent()) {
       return Result.success(optionalForwardCurve.get());
@@ -60,4 +60,5 @@ public final class RateIndexCurveMarketDataFunction implements MarketDataFunctio
   public Class<RateIndexCurveId> getMarketDataIdType() {
     return RateIndexCurveId.class;
   }
+
 }

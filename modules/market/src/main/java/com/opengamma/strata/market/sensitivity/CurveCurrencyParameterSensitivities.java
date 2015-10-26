@@ -11,10 +11,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
@@ -36,8 +36,9 @@ import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.FxConvertible;
 import com.opengamma.strata.basics.currency.FxRateProvider;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
-import com.opengamma.strata.collect.DoubleArrayMath;
 import com.opengamma.strata.collect.Guavate;
+import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.market.curve.CurveName;
 
 /**
@@ -56,7 +57,7 @@ import com.opengamma.strata.market.curve.CurveName;
  * one for each node on the curve.
  * <p>
  * One way of viewing this class is as a {@code Map} from a specific sensitivity key to
- * {@code double[]} sensitivity values. However, instead or being structured as a {@code Map},
+ * {@code DoubleArray} sensitivity values. However, instead or being structured as a {@code Map},
  * the data is structured as a {@code List}, with the key and value in each entry.
  */
 @BeanDefinition(builderScope = "private")
@@ -87,13 +88,13 @@ public final class CurveCurrencyParameterSensitivities
   }
 
   /**
-   * Obtains an instance from a single sensitivity entry.
-   * 
-   * @param sensitivity  the sensitivity entry
+   * Obtains an instance from a multiple sensitivity entries.
+   *
+   * @param sensitivities  the sensitivities
    * @return the sensitivities instance
    */
-  public static CurveCurrencyParameterSensitivities of(CurveCurrencyParameterSensitivity sensitivity) {
-    return new CurveCurrencyParameterSensitivities(ImmutableList.of(sensitivity));
+  public static CurveCurrencyParameterSensitivities of(CurveCurrencyParameterSensitivity... sensitivities) {
+    return new CurveCurrencyParameterSensitivities(ImmutableList.copyOf(sensitivities));
   }
 
   /**
@@ -138,7 +139,7 @@ public final class CurveCurrencyParameterSensitivities
   }
 
   /**
-   * Gets sensitivity values by name and currency.
+   * Gets a single sensitivity instance by name and currency.
    * 
    * @param name  the curve name to find
    * @param currency  the currency to find
@@ -146,10 +147,24 @@ public final class CurveCurrencyParameterSensitivities
    * @throws IllegalArgumentException if the name and currency do not match an entry
    */
   public CurveCurrencyParameterSensitivity getSensitivity(CurveName name, Currency currency) {
+    return findSensitivity(name, currency)
+        .orElseThrow(() -> new IllegalArgumentException(Messages.format(
+            "Unable to find sensitivity: {} for {}", name, currency)));
+  }
+
+  /**
+   * Finds a single sensitivity instance by name and currency.
+   * <p>
+   * If the sensitivity is not found, optional empty is returned.
+   * 
+   * @param name  the curve name to find
+   * @param currency  the currency to find
+   * @return the matching sensitivity
+   */
+  public Optional<CurveCurrencyParameterSensitivity> findSensitivity(CurveName name, Currency currency) {
     return sensitivities.stream()
         .filter(sens -> sens.getCurveName().equals(name) && sens.getCurrency().equals(currency))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unable to find sensitivity"));
+        .findFirst();
   }
 
   //-------------------------------------------------------------------------
@@ -194,7 +209,7 @@ public final class CurveCurrencyParameterSensitivities
         mutable, addition, CurveCurrencyParameterSensitivity::compareKey);
     if (index >= 0) {
       CurveCurrencyParameterSensitivity base = mutable.get(index);
-      double[] combined = DoubleArrayMath.combineByAddition(base.getSensitivity(), addition.getSensitivity());
+      DoubleArray combined = base.getSensitivity().plus(addition.getSensitivity());
       mutable.set(index, base.withSensitivity(combined));
     } else {
       int insertionPoint = -(index + 1);
@@ -236,8 +251,7 @@ public final class CurveCurrencyParameterSensitivities
   public CurrencyAmount total(Currency resultCurrency, FxRateProvider rateProvider) {
     CurveCurrencyParameterSensitivities converted = convertedTo(resultCurrency, rateProvider);
     double total = converted.sensitivities.stream()
-        .map(CurveCurrencyParameterSensitivity::getSensitivity)
-        .flatMapToDouble(DoubleStream::of)
+        .mapToDouble(s -> s.getSensitivity().total())
         .sum();
     return CurrencyAmount.of(resultCurrency, total);
   }
@@ -313,20 +327,20 @@ public final class CurveCurrencyParameterSensitivities
       if (index >= 0) {
         // matched, so must be equal
         CurveCurrencyParameterSensitivity sens2 = mutable.get(index);
-        if (!DoubleArrayMath.fuzzyEquals(sens1.getSensitivity(), sens2.getSensitivity(), tolerance)) {
+        if (!sens1.getSensitivity().equalWithTolerance(sens2.getSensitivity(), tolerance)) {
           return false;
         }
         mutable.remove(index);
       } else {
         // did not match, so must be zero
-        if (!DoubleArrayMath.fuzzyEqualsZero(sens1.getSensitivity(), tolerance)) {
+        if (!sens1.getSensitivity().equalZeroWithTolerance(tolerance)) {
           return false;
         }
       }
     }
     // all that remain from other instance must be zero
     for (CurveCurrencyParameterSensitivity sens2 : mutable) {
-      if (!DoubleArrayMath.fuzzyEqualsZero(sens2.getSensitivity(), tolerance)) {
+      if (!sens2.getSensitivity().equalZeroWithTolerance(tolerance)) {
         return false;
       }
     }

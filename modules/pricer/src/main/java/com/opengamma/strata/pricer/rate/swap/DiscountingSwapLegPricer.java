@@ -6,6 +6,7 @@
 package com.opengamma.strata.pricer.rate.swap;
 
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 import com.google.common.collect.ImmutableList;
@@ -13,9 +14,9 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.finance.rate.swap.ExpandedSwapLeg;
+import com.opengamma.strata.finance.rate.swap.KnownAmountPaymentPeriod;
 import com.opengamma.strata.finance.rate.swap.PaymentEvent;
 import com.opengamma.strata.finance.rate.swap.PaymentPeriod;
-import com.opengamma.strata.finance.rate.swap.RateAccrualPeriod;
 import com.opengamma.strata.finance.rate.swap.RatePaymentPeriod;
 import com.opengamma.strata.finance.rate.swap.SwapLeg;
 import com.opengamma.strata.market.amount.CashFlow;
@@ -23,7 +24,6 @@ import com.opengamma.strata.market.amount.CashFlows;
 import com.opengamma.strata.market.explain.ExplainKey;
 import com.opengamma.strata.market.explain.ExplainMapBuilder;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
-import com.opengamma.strata.market.value.DiscountFactors;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 
 /**
@@ -124,36 +124,47 @@ public class DiscountingSwapLegPricer {
 
   //-------------------------------------------------------------------------
   /**
+   * Calculates the accrued interest since the last payment.
+   * <p>
+   * This determines the payment period applicable at the valuation date and calculates
+   * the accrued interest since the last payment.
+   * The result is returned using the payment currency of the leg.
+   * 
+   * @param leg  the leg to price
+   * @param provider  the rates provider
+   * @return the accrued interest of the swap leg
+   */
+  public CurrencyAmount accruedInterest(SwapLeg leg, RatesProvider provider) {
+    ExpandedSwapLeg expanded = leg.expand();
+    Optional<PaymentPeriod> period = expanded.findPaymentPeriod(provider.getValuationDate());
+    if (period.isPresent()) {
+      double accruedInterest = paymentPeriodPricer.accruedInterest(period.get(), provider);
+      return CurrencyAmount.of(leg.getCurrency(), accruedInterest);
+    }
+    return CurrencyAmount.zero(leg.getCurrency());
+  }
+
+  //-------------------------------------------------------------------------
+  /**
    * Computes the Present Value of a Basis Point for a swap leg. 
    * <p>
    * The Present Value of a Basis Point is the value of the leg when the rate is equal to 1.
    * A better name would be "Present Value of 1".
    * The quantity is also known as "physical annuity" or "level".
    * <p>
-   * All the payments periods must be of type {@link RatePaymentPeriod}.
    * Each period must not have FX reset or compounding.
+   * They must not be of type {@link KnownAmountPaymentPeriod}.
    * 
    * @param leg  the swap leg
    * @param provider  the rates provider
    * @return the Present Value of a Basis Point
    */
   public double pvbp(SwapLeg leg, RatesProvider provider) {
-    double pvbpLeg = 0.0;
+    double pvbpLeg = 0d;
     for (PaymentPeriod period : leg.expand().getPaymentPeriods()) {
-      ArgChecker.isTrue(period instanceof RatePaymentPeriod, "PaymentPeriod must be instance of RatePaymentPeriod");
-      pvbpLeg += pvbpPayment((RatePaymentPeriod) period, provider);
+      pvbpLeg += paymentPeriodPricer.pvbp(period, provider);
     }
     return pvbpLeg;
-  }
-
-  // computes Present Value of a Basis Point for payment with a unique accrual period (no compounding) 
-  // and no FX reset.
-  private double pvbpPayment(RatePaymentPeriod paymentPeriod, RatesProvider provider) {
-    ArgChecker.isTrue(!paymentPeriod.getFxReset().isPresent(), "FX reset is not supported");
-    ArgChecker.isTrue(paymentPeriod.getAccrualPeriods().size() == 1, "Compounding is not supported");
-    RateAccrualPeriod accrualPeriod = paymentPeriod.getAccrualPeriods().get(0);
-    double df = provider.discountFactor(paymentPeriod.getCurrency(), paymentPeriod.getPaymentDate());
-    return df * accrualPeriod.getYearFraction() * paymentPeriod.getNotional();
   }
 
   //-------------------------------------------------------------------------
@@ -243,8 +254,8 @@ public class DiscountingSwapLegPricer {
    * A better name would be "Present Value of 1".
    * The quantity is also known as "physical annuity" or "level".
    * <p>
-   * All the payments periods must be of type {@link RatePaymentPeriod}.
-   * Each period must have a fixed rate, no FX reset and no compounding.
+   * Each period must not have FX reset or compounding.
+   * They must not be of type {@link KnownAmountPaymentPeriod}.
    * 
    * @param fixedLeg  the swap fixed leg
    * @param provider  the rates provider
@@ -253,21 +264,59 @@ public class DiscountingSwapLegPricer {
   public PointSensitivityBuilder pvbpSensitivity(SwapLeg fixedLeg, RatesProvider provider) {
     PointSensitivityBuilder builder = PointSensitivityBuilder.none();
     for (PaymentPeriod period : fixedLeg.expand().getPaymentPeriods()) {
-      ArgChecker.isTrue(period instanceof RatePaymentPeriod, "PaymentPeriod must be instance of RatePaymentPeriod");
-      builder = builder.combinedWith(pvbpSensitivityPayment((RatePaymentPeriod) period, provider));
+      builder = builder.combinedWith(paymentPeriodPricer.pvbpSensitivity(period, provider));
     }
     return builder;
   }
 
-  // computes Present Value of a Basis Point curve sensitivity for fixed payment with a unique accrual period 
-  // (no compounding) and no FX reset.
-  private PointSensitivityBuilder pvbpSensitivityPayment(RatePaymentPeriod paymentPeriod, RatesProvider provider) {
-    ArgChecker.isTrue(!paymentPeriod.getFxReset().isPresent(), "FX reset is not supported");
-    ArgChecker.isTrue(paymentPeriod.getAccrualPeriods().size() == 1, "Compounding is not supported");
-    RateAccrualPeriod accrualPeriod = paymentPeriod.getAccrualPeriods().get(0);
-    DiscountFactors discountFactors = provider.discountFactors(paymentPeriod.getCurrency());
-    return discountFactors.zeroRatePointSensitivity(paymentPeriod.getPaymentDate())
-        .multipliedBy(accrualPeriod.getYearFraction() * paymentPeriod.getNotional());
+  //-------------------------------------------------------------------------
+  /**
+   * Computes the conventional cash annuity from a swap leg. 
+   * <p>
+   * The computation is relevant only for standard swaps with constant notional and regular payments.
+   * The swap leg must be a fixed leg. However, this is not checked internally.
+   * 
+   * @param fixedLeg  the fixed leg of the swap.
+   * @param yield  the yield.
+   * @return the cash annuity.
+   */
+  public double annuityCash(SwapLeg fixedLeg, double yield) {
+    ExpandedSwapLeg expanded = fixedLeg.expand();
+    int nbFixedPeriod = expanded.getPaymentPeriods().size();
+    PaymentPeriod paymentPeriod = expanded.getPaymentPeriods().get(0);
+    ArgChecker.isTrue(paymentPeriod instanceof RatePaymentPeriod, "payment period should be RatePaymentPeriod");
+    RatePaymentPeriod ratePaymentPeriod = (RatePaymentPeriod) paymentPeriod;
+    int nbFixedPaymentYear = (int) Math.round(1d /
+        ratePaymentPeriod.getDayCount().yearFraction(ratePaymentPeriod.getStartDate(), ratePaymentPeriod.getEndDate()));
+    double notional = Math.abs(ratePaymentPeriod.getNotional());
+    double annuityCash = notional * (1d - Math.pow(1d + yield / nbFixedPaymentYear, -nbFixedPeriod)) / yield;
+    return annuityCash;
+  }
+
+  /**
+   * Computes the derivative of the conventional cash annuity with respect to the yield from a swap leg. 
+   * <p>
+   * The computation is relevant only for standard swaps with constant notional and regular payments.
+   * The swap leg must be a fixed leg. However, this is not checked internally. 
+   * 
+   * @param fixedLeg  the fixed leg of the swap.
+   * @param yield  the yield.
+   * @return the cash annuity.
+   */
+  public double annuityCashDerivative(SwapLeg fixedLeg, double yield) {
+    ExpandedSwapLeg expanded = fixedLeg.expand();
+    int nbFixedPeriod = expanded.getPaymentPeriods().size();
+    PaymentPeriod paymentPeriod = expanded.getPaymentPeriods().get(0);
+    ArgChecker.isTrue(paymentPeriod instanceof RatePaymentPeriod, "payment period should be RatePaymentPeriod");
+    RatePaymentPeriod ratePaymentPeriod = (RatePaymentPeriod) paymentPeriod;
+    int nbFixedPaymentYear = (int) Math.round(1d /
+        ratePaymentPeriod.getDayCount().yearFraction(ratePaymentPeriod.getStartDate(), ratePaymentPeriod.getEndDate()));
+    double notional = Math.abs(ratePaymentPeriod.getNotional());
+    double fwdOverPeriods = yield / nbFixedPaymentYear;
+    int nbFixedPeriodPlus = 1 + nbFixedPeriod;
+    double annuityCashDerivative = notional * Math.pow(yield, -2)
+        * ((1d + nbFixedPeriodPlus * fwdOverPeriods) * Math.pow(1d + fwdOverPeriods, -nbFixedPeriodPlus) - 1d);
+    return annuityCashDerivative;
   }
 
   //-------------------------------------------------------------------------

@@ -5,6 +5,7 @@
  */
 package com.opengamma.strata.market.id;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -34,11 +35,10 @@ import com.opengamma.strata.market.key.QuoteKey;
  * <p>
  * A quote ID identifies a piece of data in an external data provider.
  * <p>
- * Quote IDs should not normally to be used by calculation code. Higher level IDs are
- * preferred, for example {@link IndexRateId}. Higher level market data IDs allow the system to
- * associate the market data with metadata when applying scenario definitions.
- * If quote IDs are used directly, the system has no way to perturb the market data using
- * higher level rules that rely on metadata.
+ * Where possible, applications should use higher level IDs, instead of this class.
+ * Higher level market data keys allow the system to associate the market data with metadata when
+ * applying scenario definitions. If quote IDs are used directly, the system has no way to
+ * perturb the market data using higher level rules that rely on metadata.
  * <p>
  * The {@link StandardId} in a quote ID is typically the ID from an underlying data provider (e.g.
  * Bloomberg or Reuters). However the field name is a generic name which is mapped to the field name
@@ -59,7 +59,7 @@ import com.opengamma.strata.market.key.QuoteKey;
  * @see FieldName
  */
 @BeanDefinition(builderScope = "private")
-public final class QuoteId implements ObservableId, ImmutableBean {
+public final class QuoteId implements ObservableId, ImmutableBean, Serializable {
 
   /** The ID of the data, typically an ID from an external data provider. */
   @PropertyDefinition(validate = "notNull", overrideGet = true)
@@ -125,6 +125,11 @@ public final class QuoteId implements ObservableId, ImmutableBean {
   static {
     JodaBeanUtils.registerMetaBean(QuoteId.Meta.INSTANCE);
   }
+
+  /**
+   * The serialization version id.
+   */
+  private static final long serialVersionUID = 1L;
 
   private QuoteId(
       StandardId standardId,

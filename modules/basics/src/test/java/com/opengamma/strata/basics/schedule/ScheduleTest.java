@@ -37,10 +37,12 @@ import com.google.common.collect.ImmutableList;
 public class ScheduleTest {
 
   private static final LocalDate JUL_04 = date(2014, JULY, 4);
+  private static final LocalDate JUL_16 = date(2014, JULY, 16);
   private static final LocalDate JUL_17 = date(2014, JULY, 17);
   private static final LocalDate AUG_17 = date(2014, AUGUST, 17);
   private static final LocalDate SEP_17 = date(2014, SEPTEMBER, 17);
   private static final LocalDate SEP_30 = date(2014, SEPTEMBER, 30);
+  private static final LocalDate OCT_15 = date(2014, OCTOBER, 15);
   private static final LocalDate OCT_17 = date(2014, OCTOBER, 17);
   private static final LocalDate NOV_17 = date(2014, NOVEMBER, 17);
   private static final LocalDate DEC_17 = date(2014, DECEMBER, 17);
@@ -405,6 +407,24 @@ public class ScheduleTest {
   }
 
   //-------------------------------------------------------------------------
+  public void test_toUnadjusted() {
+    SchedulePeriod a = SchedulePeriod.of(JUL_17, OCT_17, JUL_16, OCT_15);
+    SchedulePeriod b = SchedulePeriod.of(JUL_16, OCT_15, JUL_16, OCT_15);
+    Schedule test = Schedule.builder()
+        .periods(ImmutableList.of(a))
+        .frequency(P1M)
+        .rollConvention(DAY_17)
+        .build()
+        .toUnadjusted();
+    Schedule expected = Schedule.builder()
+        .periods(ImmutableList.of(b))
+        .frequency(P1M)
+        .rollConvention(DAY_17)
+        .build();
+    assertEquals(test, expected);
+  }
+
+  //-------------------------------------------------------------------------
   public void coverage_equals() {
     Schedule a = Schedule.builder()
         .periods(ImmutableList.of(P2_NORMAL, P3_NORMAL, P4_NORMAL, P5_NORMAL, P6_NORMAL))
@@ -436,7 +456,7 @@ public class ScheduleTest {
   public void coverage_builder() {
     Schedule.Builder builder = Schedule.builder();
     builder
-        .periods(ImmutableList.of(P1_STUB))
+        .periods(P1_STUB)
         .frequency(P1M)
         .rollConvention(DAY_17)
         .build();

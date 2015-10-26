@@ -24,10 +24,10 @@ import java.time.YearMonth;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.basics.currency.FxMatrix;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.curve.ConstantNodalCurve;
 import com.opengamma.strata.market.curve.Curve;
@@ -37,6 +37,7 @@ import com.opengamma.strata.market.value.DiscountFxForwardRates;
 import com.opengamma.strata.market.value.ForwardPriceIndexValues;
 import com.opengamma.strata.market.value.PriceIndexValues;
 import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 
 /**
  * Test {@link ImmutableRatesProvider}.
@@ -65,7 +66,8 @@ public class ImmutableRatesProviderTest {
       GB_RPI,
       VAL_MONTH,
       LocalDateDoubleTimeSeries.of(date(2013, 11, 30), 252),
-      InterpolatedNodalCurve.of(Curves.prices("GB-RPI"), new double[] {1d, 10d}, new double[] {252d, 252d}, INTERPOLATOR));
+      InterpolatedNodalCurve.of(
+          Curves.prices("GB-RPI"), DoubleArray.of(1d, 10d), DoubleArray.of(252d, 252d), INTERPOLATOR));
 
   //-------------------------------------------------------------------------
   public void test_builder() {
@@ -76,24 +78,6 @@ public class ImmutableRatesProviderTest {
         .build();
     assertEquals(test.getValuationDate(), VAL_DATE);
     assertEquals(ImmutableRatesProvider.meta().timeSeries().get(test), ImmutableMap.of(WM_GBP_USD, ts));
-  }
-
-  public void test_builder_invalidAdditionalData() {
-    assertThrowsIllegalArg(() -> ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .additionalData(ImmutableMap.of(String.class, YearMonth.now()))
-        .build());
-  }
-
-  //-------------------------------------------------------------------------
-  public void test_data() {
-    YearMonth sample = YearMonth.now();
-    ImmutableRatesProvider test = ImmutableRatesProvider.builder()
-        .valuationDate(VAL_DATE)
-        .additionalData(ImmutableMap.of(YearMonth.class, sample))
-        .build();
-    assertEquals(test.data(YearMonth.class), sample);
-    assertThrowsIllegalArg(() -> test.data(String.class));
   }
 
   //-------------------------------------------------------------------------
@@ -208,7 +192,6 @@ public class ImmutableRatesProviderTest {
     ImmutableRatesProvider test2 = ImmutableRatesProvider.builder()
         .valuationDate(LocalDate.of(2014, 6, 27))
         .discountCurves(ImmutableMap.of(GBP, DISCOUNT_CURVE_GBP))
-        .timeSeries(ImmutableMap.of(USD_LIBOR_3M, LocalDateDoubleTimeSeries.empty()))
         .build();
     coverBeanEquals(test, test2);
   }

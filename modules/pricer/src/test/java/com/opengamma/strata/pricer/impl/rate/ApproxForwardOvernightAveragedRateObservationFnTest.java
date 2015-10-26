@@ -21,10 +21,10 @@ import java.util.Arrays;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.index.OvernightIndex;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeriesBuilder;
 import com.opengamma.strata.finance.rate.OvernightAveragedRateObservation;
@@ -38,6 +38,7 @@ import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitiviti
 import com.opengamma.strata.market.sensitivity.OvernightRateSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.market.value.OvernightIndexRates;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.PricingException;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.SimpleRatesProvider;
@@ -1095,8 +1096,8 @@ public class ApproxForwardOvernightAveragedRateObservationFnTest {
   /** Test curve parameter sensitivity with finite difference sensitivity calculator. No cutoff period*/
   public void rateFedFundNoCutOffForwardParameterSensitivity() {
     LocalDate[] valuationDate = {date(2015, 1, 1), date(2015, 1, 8)};
-    double[] time_usd = new double[] {0.0, 0.5, 1.0, 2.0, 5.0, 10.0};
-    double[] rate_usd = new double[] {0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135};
+    DoubleArray time_usd = DoubleArray.of(0.0, 0.5, 1.0, 2.0, 5.0, 10.0);
+    DoubleArray rate_usd = DoubleArray.of(0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135);
     OvernightAveragedRateObservation ro =
         OvernightAveragedRateObservation.of(USD_FED_FUND, FIXING_START_DATE, FIXING_END_DATE, 0);
 
@@ -1122,8 +1123,8 @@ public class ApproxForwardOvernightAveragedRateObservationFnTest {
   /** Test curve parameter sensitivity with finite difference sensitivity calculator. Two days cutoff period*/
   public void rateFedFund2CutOffForwardParameterSensitivity() {
     LocalDate[] valuationDate = {date(2015, 1, 1), date(2015, 1, 8)};
-    double[] time_usd = new double[] {0.0, 0.5, 1.0, 2.0, 5.0, 10.0};
-    double[] rate_usd = new double[] {0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135};
+    DoubleArray time_usd = DoubleArray.of(0.0, 0.5, 1.0, 2.0, 5.0, 10.0);
+    DoubleArray rate_usd = DoubleArray.of(0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135);
     OvernightAveragedRateObservation ro =
         OvernightAveragedRateObservation.of(USD_FED_FUND, FIXING_START_DATE, FIXING_END_DATE, 2);
 

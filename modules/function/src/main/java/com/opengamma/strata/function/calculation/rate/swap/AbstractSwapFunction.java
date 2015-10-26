@@ -6,7 +6,7 @@
 package com.opengamma.strata.function.calculation.rate.swap;
 
 import static com.opengamma.strata.collect.Guavate.toImmutableSet;
-import static com.opengamma.strata.engine.calculations.function.FunctionUtils.toScenarioResult;
+import static com.opengamma.strata.engine.calculation.function.FunctionUtils.toScenarioResult;
 
 import java.util.Optional;
 import java.util.Set;
@@ -17,16 +17,16 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.market.MarketDataKey;
 import com.opengamma.strata.basics.market.ObservableKey;
-import com.opengamma.strata.engine.calculations.DefaultSingleCalculationMarketData;
-import com.opengamma.strata.engine.calculations.function.result.ScenarioResult;
+import com.opengamma.strata.engine.calculation.DefaultSingleCalculationMarketData;
+import com.opengamma.strata.engine.calculation.function.result.ScenarioResult;
 import com.opengamma.strata.engine.marketdata.CalculationMarketData;
 import com.opengamma.strata.engine.marketdata.FunctionRequirements;
 import com.opengamma.strata.finance.rate.swap.ExpandedSwap;
 import com.opengamma.strata.finance.rate.swap.Swap;
 import com.opengamma.strata.finance.rate.swap.SwapLeg;
 import com.opengamma.strata.finance.rate.swap.SwapTrade;
-import com.opengamma.strata.function.MarketDataRatesProvider;
 import com.opengamma.strata.function.calculation.AbstractCalculationFunction;
+import com.opengamma.strata.function.marketdata.MarketDataRatesProvider;
 import com.opengamma.strata.market.key.DiscountFactorsKey;
 import com.opengamma.strata.market.key.IndexRateKey;
 import com.opengamma.strata.market.key.MarketDataKeys;
@@ -34,7 +34,9 @@ import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.pricer.rate.swap.DiscountingSwapProductPricer;
 
 /**
- * Calculates a result of a {@code SwapTrade} for each of a set of scenarios.
+ * Perform calculations on a single {@code SwapTrade} for each of a set of scenarios.
+ * <p>
+ * The default reporting currency is determined from the first swap leg.
  * 
  * @param <T>  the return type
  */
@@ -59,8 +61,9 @@ public abstract class AbstractSwapFunction<T>
     super(convertCurrencies);
   }
 
+  //-------------------------------------------------------------------------
   /**
-   * Returns the Swap pricer.
+   * Returns the pricer.
    * 
    * @return the pricer
    */
@@ -68,7 +71,6 @@ public abstract class AbstractSwapFunction<T>
     return DiscountingSwapProductPricer.DEFAULT;
   }
 
-  //-------------------------------------------------------------------------
   @Override
   public FunctionRequirements requirements(SwapTrade trade) {
     Swap swap = trade.getProduct();
@@ -107,12 +109,6 @@ public abstract class AbstractSwapFunction<T>
         .collect(toScenarioResult(isConvertCurrencies()));
   }
 
-  /**
-   * Returns the currency of the first leg.
-   *
-   * @param target  the swap that is the target of the calculation
-   * @return the currency of the first leg
-   */
   @Override
   public Optional<Currency> defaultReportingCurrency(SwapTrade target) {
     return Optional.of(target.getProduct().getLegs().get(0).getCurrency());

@@ -37,7 +37,7 @@ public final class EuropeanVanillaOption
   @PropertyDefinition(validate = "ArgChecker.notNegative")
   private final double timeToExpiry;
   /**
-   * Call or put, true if call, false if put.
+   * Whether the option is call or put.
    */
   @PropertyDefinition(validate = "notNull")
   private final PutCall putCall;
@@ -47,12 +47,12 @@ public final class EuropeanVanillaOption
    * Obtains an instance.
    * 
    * @param strike  the strike
-   * @param timeToExpiry  the time to expiry, year fraction
+   * @param timeToExpiration  the time to expiration, year fraction
    * @param putCall  whether the option is put or call.
    * @return the option definition
    */
-  public static EuropeanVanillaOption of(double strike, double timeToExpiry, PutCall putCall) {
-    return new EuropeanVanillaOption(strike, timeToExpiry, putCall);
+  public static EuropeanVanillaOption of(double strike, double timeToExpiration, PutCall putCall) {
+    return new EuropeanVanillaOption(strike, timeToExpiration, putCall);
   }
 
   //-------------------------------------------------------------------------
@@ -131,7 +131,7 @@ public final class EuropeanVanillaOption
 
   //-----------------------------------------------------------------------
   /**
-   * Gets call or put, true if call, false if put.
+   * Gets whether the option is call or put.
    * @return the value of the property, not null
    */
   public PutCall getPutCall() {

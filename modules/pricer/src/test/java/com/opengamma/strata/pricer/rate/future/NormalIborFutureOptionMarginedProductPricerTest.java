@@ -19,15 +19,17 @@ import java.time.ZoneId;
 
 import org.testng.annotations.Test;
 
-import com.opengamma.analytics.math.interpolation.CombinedInterpolatorExtrapolatorFactory;
-import com.opengamma.analytics.math.interpolation.GridInterpolator2D;
-import com.opengamma.analytics.math.interpolation.Interpolator1D;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
-import com.opengamma.analytics.math.surface.InterpolatedDoublesSurface;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.finance.rate.future.IborFutureOption;
 import com.opengamma.strata.market.sensitivity.IborFutureOptionSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
+import com.opengamma.strata.market.surface.DefaultSurfaceMetadata;
+import com.opengamma.strata.market.surface.InterpolatedNodalSurface;
 import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.math.impl.interpolation.CombinedInterpolatorExtrapolatorFactory;
+import com.opengamma.strata.math.impl.interpolation.GridInterpolator2D;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1D;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.impl.option.EuropeanVanillaOption;
 import com.opengamma.strata.pricer.impl.option.NormalFunctionData;
 import com.opengamma.strata.pricer.impl.option.NormalPriceFunction;
@@ -43,14 +45,14 @@ public class NormalIborFutureOptionMarginedProductPricerTest {
       CombinedInterpolatorExtrapolatorFactory.getInterpolator(Interpolator1DFactory.LINEAR,
           Interpolator1DFactory.FLAT_EXTRAPOLATOR, Interpolator1DFactory.FLAT_EXTRAPOLATOR);
   private static final GridInterpolator2D INTERPOLATOR_2D = new GridInterpolator2D(LINEAR_FLAT, LINEAR_FLAT);
-  private static final double[] TIMES =
-      new double[] {0.25, 0.50, 1.00, 0.25, 0.50, 1.00, 0.25, 0.50, 1.00, 0.25, 0.50, 1.00};
-  private static final double[] MONEYNESS_PRICES =
-      new double[] {-0.02, -0.02, -0.02, -0.01, -0.01, -0.01, 0.00, 0.00, 0.00, 0.01, 0.01, 0.01};
-  private static final double[] NORMAL_VOL =
-      new double[] {0.01, 0.011, 0.012, 0.011, 0.012, 0.013, 0.012, 0.013, 0.014, 0.010, 0.012, 0.014};
-  private static final InterpolatedDoublesSurface PARAMETERS_PRICE =
-      new InterpolatedDoublesSurface(TIMES, MONEYNESS_PRICES, NORMAL_VOL, INTERPOLATOR_2D);
+  private static final DoubleArray TIMES =
+      DoubleArray.of(0.25, 0.50, 1.00, 0.25, 0.50, 1.00, 0.25, 0.50, 1.00, 0.25, 0.50, 1.00);
+  private static final DoubleArray MONEYNESS_PRICES =
+      DoubleArray.of(-0.02, -0.02, -0.02, -0.01, -0.01, -0.01, 0.00, 0.00, 0.00, 0.01, 0.01, 0.01);
+  private static final DoubleArray NORMAL_VOL =
+      DoubleArray.of(0.01, 0.011, 0.012, 0.011, 0.012, 0.013, 0.012, 0.013, 0.014, 0.010, 0.012, 0.014);
+  private static final InterpolatedNodalSurface PARAMETERS_PRICE = InterpolatedNodalSurface.of(
+      DefaultSurfaceMetadata.of("Test"), TIMES, MONEYNESS_PRICES, NORMAL_VOL, INTERPOLATOR_2D);
 
   private static final LocalDate VALUATION_DATE = date(2015, 2, 17);
   private static final LocalTime VALUATION_TIME = LocalTime.of(13, 45);
@@ -81,10 +83,10 @@ public class NormalIborFutureOptionMarginedProductPricerTest {
 
     double futurePrice = 0.9875;
     double strike = FUTURE_OPTION_PRODUCT.getStrikePrice();
-    double expiryTime = ACT_365F.relativeYearFraction(VALUATION_DATE, FUTURE_OPTION_PRODUCT.getExpirationDate());
+    double expirationTime = ACT_365F.relativeYearFraction(VALUATION_DATE, FUTURE_OPTION_PRODUCT.getExpirationDate());
     double priceSimpleMoneyness = strike - futurePrice;
-    double normalVol = PARAMETERS_PRICE.getZValue(expiryTime, priceSimpleMoneyness);
-    EuropeanVanillaOption option = EuropeanVanillaOption.of(strike, expiryTime, FUTURE_OPTION_PRODUCT.getPutCall());
+    double normalVol = PARAMETERS_PRICE.zValue(expirationTime, priceSimpleMoneyness);
+    EuropeanVanillaOption option = EuropeanVanillaOption.of(strike, expirationTime, FUTURE_OPTION_PRODUCT.getPutCall());
     NormalFunctionData normalPoint = NormalFunctionData.of(futurePrice, 1.0, normalVol);
     double optionPriceExpected = NORMAL_FUNCTION.getPriceFunction(option).evaluate(normalPoint);
     double optionPriceComputed = OPTION_PRICER.price(FUTURE_OPTION_PRODUCT, prov, VOL_SIMPLE_MONEY_PRICE, futurePrice);
@@ -112,10 +114,10 @@ public class NormalIborFutureOptionMarginedProductPricerTest {
 
     double futurePrice = 0.9875;
     double strike = FUTURE_OPTION_PRODUCT.getStrikePrice();
-    double expiryTime = ACT_365F.relativeYearFraction(VALUATION_DATE, FUTURE_OPTION_PRODUCT.getExpirationDate());
+    double expirationTime = ACT_365F.relativeYearFraction(VALUATION_DATE, FUTURE_OPTION_PRODUCT.getExpirationDate());
     double priceSimpleMoneyness = strike - futurePrice;
-    double normalVol = PARAMETERS_PRICE.getZValue(expiryTime, priceSimpleMoneyness);
-    EuropeanVanillaOption option = EuropeanVanillaOption.of(strike, expiryTime, FUTURE_OPTION_PRODUCT.getPutCall());
+    double normalVol = PARAMETERS_PRICE.zValue(expirationTime, priceSimpleMoneyness);
+    EuropeanVanillaOption option = EuropeanVanillaOption.of(strike, expirationTime, FUTURE_OPTION_PRODUCT.getPutCall());
     NormalFunctionData normalPoint = NormalFunctionData.of(futurePrice, 1.0, normalVol);
     double optionDeltaExpected = NORMAL_FUNCTION.getDelta(option, normalPoint);
     double optionDeltaComputed =
@@ -180,16 +182,16 @@ public class NormalIborFutureOptionMarginedProductPricerTest {
 
     double futurePrice = 0.9875;
     double strike = FUTURE_OPTION_PRODUCT.getStrikePrice();
-    double expiryTime = ACT_365F.relativeYearFraction(VALUATION_DATE, FUTURE_OPTION_PRODUCT.getExpirationDate());
+    double expirationTime = ACT_365F.relativeYearFraction(VALUATION_DATE, FUTURE_OPTION_PRODUCT.getExpirationDate());
     double priceSimpleMoneyness = strike - futurePrice;
-    double normalVol = PARAMETERS_PRICE.getZValue(expiryTime, priceSimpleMoneyness);
-    EuropeanVanillaOption option = EuropeanVanillaOption.of(strike, expiryTime, FUTURE_OPTION_PRODUCT.getPutCall());
+    double normalVol = PARAMETERS_PRICE.zValue(expirationTime, priceSimpleMoneyness);
+    EuropeanVanillaOption option = EuropeanVanillaOption.of(strike, expirationTime, FUTURE_OPTION_PRODUCT.getPutCall());
     NormalFunctionData normalPoint = NormalFunctionData.of(futurePrice, 1.0, normalVol);
     double optionVegaExpected = NORMAL_FUNCTION.getVega(option, normalPoint);
     IborFutureOptionSensitivity optionVegaComputed = OPTION_PRICER.priceSensitivityNormalVolatility(
         FUTURE_OPTION_PRODUCT, prov, VOL_SIMPLE_MONEY_PRICE, futurePrice);
     assertEquals(optionVegaComputed.getSensitivity(), optionVegaExpected, TOLERANCE_PRICE);
-    assertEquals(optionVegaComputed.getExpiryDate(), FUTURE_OPTION_PRODUCT.getExpirationDate());
+    assertEquals(optionVegaComputed.getExpiration(), FUTURE_OPTION_PRODUCT.getExpiration());
     assertEquals(optionVegaComputed.getFixingDate(), FUTURE_OPTION_PRODUCT.getUnderlying().getFixingDate());
     assertEquals(optionVegaComputed.getStrikePrice(), FUTURE_OPTION_PRODUCT.getStrikePrice());
     assertEquals(optionVegaComputed.getFuturePrice(), futurePrice);

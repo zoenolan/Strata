@@ -12,7 +12,7 @@ import com.opengamma.strata.collect.result.Result;
 import com.opengamma.strata.engine.marketdata.MarketDataLookup;
 import com.opengamma.strata.engine.marketdata.MarketDataRequirements;
 import com.opengamma.strata.engine.marketdata.config.MarketDataConfig;
-import com.opengamma.strata.engine.marketdata.functions.MarketDataFunction;
+import com.opengamma.strata.engine.marketdata.function.MarketDataFunction;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveGroup;
 import com.opengamma.strata.market.id.CurveGroupId;
@@ -51,7 +51,7 @@ public class DiscountCurveMarketDataFunction
           id.getMarketDataFeed());
     }
     CurveGroup curveGroup = marketData.getValue(curveGroupId);
-    Optional<Curve> optionalDiscountCurve = curveGroup.getDiscountCurve(id.getCurrency());
+    Optional<Curve> optionalDiscountCurve = curveGroup.findDiscountCurve(id.getCurrency());
     if (optionalDiscountCurve.isPresent()) {
       return Result.success(optionalDiscountCurve.get());
     } else {

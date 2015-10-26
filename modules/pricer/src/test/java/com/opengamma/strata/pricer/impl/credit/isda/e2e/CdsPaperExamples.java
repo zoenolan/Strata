@@ -17,14 +17,14 @@ import java.util.Arrays;
 
 import org.testng.annotations.Test;
 
-import com.opengamma.analytics.math.linearalgebra.LUDecompositionCommons;
-import com.opengamma.analytics.math.linearalgebra.LUDecompositionResult;
-import com.opengamma.analytics.math.matrix.DoubleMatrix1D;
-import com.opengamma.analytics.math.matrix.DoubleMatrix2D;
-import com.opengamma.analytics.math.matrix.MatrixAlgebra;
-import com.opengamma.analytics.math.matrix.OGMatrixAlgebra;
 import com.opengamma.strata.collect.ArgChecker;
-import com.opengamma.strata.market.curve.ShiftType;
+import com.opengamma.strata.collect.array.DoubleArray;
+import com.opengamma.strata.collect.array.DoubleMatrix;
+import com.opengamma.strata.market.curve.perturb.ShiftType;
+import com.opengamma.strata.math.impl.linearalgebra.LUDecompositionCommons;
+import com.opengamma.strata.math.impl.linearalgebra.LUDecompositionResult;
+import com.opengamma.strata.math.impl.matrix.MatrixAlgebra;
+import com.opengamma.strata.math.impl.matrix.OGMatrixAlgebra;
 import com.opengamma.strata.pricer.impl.credit.isda.AnalyticSpreadSensitivityCalculator;
 import com.opengamma.strata.pricer.impl.credit.isda.CdsAnalytic;
 import com.opengamma.strata.pricer.impl.credit.isda.CdsAnalyticFactory;
@@ -160,7 +160,7 @@ public class CdsPaperExamples extends IsdaBaseTest {
       res[2][i] = notional * PRICER_MARKIT_FIX.pv(cds[i], YIELD_CURVE, CREDIT_CURVE, 0.01);
     }
 
-    System.out.println(new DoubleMatrix2D(res));
+    System.out.println(DoubleMatrix.copyOf(res));
   }
 
   /**
@@ -281,7 +281,7 @@ public class CdsPaperExamples extends IsdaBaseTest {
         res[j][i] = sense;
       }
     }
-    DoubleMatrix2D jacT = new DoubleMatrix2D(res);
+    DoubleMatrix jacT = DoubleMatrix.copyOf(res);
     LUDecompositionCommons decomp = new LUDecompositionCommons();
     LUDecompositionResult luRes = decomp.evaluate(jacT);
 
@@ -295,16 +295,13 @@ public class CdsPaperExamples extends IsdaBaseTest {
       LocalDate mat = IMM_DATES[i];
       System.out.print(mat.format(DATE_FORMAT));
       CdsAnalytic cds = CDS_FACTORY.makeCds(TRADE_DATE, STARTDATE, mat);
-      double[] temp = new double[nPillars];
-      for (int j = 0; j < nPillars; j++) {
-        double sense = PRICER.pvCreditSensitivity(cds, YIELD_CURVE, CREDIT_CURVE, coupon, j);
-        temp[j] = sense;
-      }
-      DoubleMatrix1D vLambda = new DoubleMatrix1D(temp);
+      DoubleArray vLambda = DoubleArray.of(
+          nPillars,
+          j -> PRICER.pvCreditSensitivity(cds, YIELD_CURVE, CREDIT_CURVE, coupon, j));
 
-      DoubleMatrix1D w = luRes.solve(vLambda);
+      DoubleArray w = luRes.solve(vLambda);
       for (int j = 0; j < nPillars; j++) {
-        System.out.print("\t" + w.getEntry(j));
+        System.out.print("\t" + w.get(j));
       }
       System.out.print("\n");
     }
@@ -440,7 +437,7 @@ public class CdsPaperExamples extends IsdaBaseTest {
     Arrays.fill(coupons, COUPON);
     double[][] temp = ANALYTIC_SPREAD_SENSE_CAL.bucketedCS01FromCreditCurve(PILLAR_CDSS, coupons, PILLAR_CDSS, YIELD_CURVE,
         CREDIT_CURVE);
-    DoubleMatrix2D jacT = MA.getTranspose(new DoubleMatrix2D(temp));
+    DoubleMatrix jacT = MA.getTranspose(DoubleMatrix.copyOf(temp));
     LUDecompositionResult decRes = decomp.evaluate(jacT);
 
     int nMat = MATURITIES_6M_STEP.length;
@@ -451,7 +448,7 @@ public class CdsPaperExamples extends IsdaBaseTest {
       double[] vs = ANALYTIC_SPREAD_SENSE_CAL.bucketedCS01FromCreditCurve(cds[i], COUPON, PILLAR_CDSS, YIELD_CURVE, CREDIT_CURVE);
       res[i] = decRes.solve(vs);
     }
-    DoubleMatrix2D hedge = new DoubleMatrix2D(res);
+    DoubleMatrix hedge = DoubleMatrix.copyOf(res);
     System.out.println(hedge);
   }
 

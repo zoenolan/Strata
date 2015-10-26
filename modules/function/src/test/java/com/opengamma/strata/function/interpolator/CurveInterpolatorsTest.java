@@ -5,14 +5,18 @@
  */
 package com.opengamma.strata.function.interpolator;
 
-import static com.opengamma.strata.collect.CollectProjectAssertions.assertThat;
+import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.testng.annotations.Test;
 
-import com.opengamma.analytics.math.interpolation.ExponentialInterpolator1D;
-import com.opengamma.analytics.math.interpolation.LinearInterpolator1D;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
+import com.opengamma.strata.math.impl.interpolation.ExponentialInterpolator1D;
+import com.opengamma.strata.math.impl.interpolation.LinearInterpolator1D;
 
+/**
+ * Test {@link CurveInterpolators}.
+ */
 @Test
 public class CurveInterpolatorsTest {
 
@@ -26,4 +30,11 @@ public class CurveInterpolatorsTest {
     CurveInterpolator exponential = CurveInterpolators.EXPONENTIAL;
     assertThat(exponential).isInstanceOf(ExponentialInterpolator1D.class);
   }
+
+  //-------------------------------------------------------------------------
+  public void coverage() {
+    coverPrivateConstructor(CurveInterpolators.class);
+    coverPrivateConstructor(StandardCurveInterpolators.class);
+  }
+
 }

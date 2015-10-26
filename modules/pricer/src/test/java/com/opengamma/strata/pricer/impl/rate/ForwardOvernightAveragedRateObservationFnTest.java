@@ -23,10 +23,10 @@ import java.util.List;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.index.OvernightIndex;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeriesBuilder;
 import com.opengamma.strata.finance.rate.OvernightAveragedRateObservation;
@@ -41,6 +41,7 @@ import com.opengamma.strata.market.sensitivity.OvernightRateSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.market.value.OvernightIndexRates;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.SimpleRatesProvider;
 import com.opengamma.strata.pricer.sensitivity.RatesFiniteDifferenceSensitivityCalculator;
@@ -320,8 +321,8 @@ public class ForwardOvernightAveragedRateObservationFnTest {
   /** Test parameter sensitivity with finite difference sensitivity calculator. Two days cutoff period. */
   public void rateFedFundTwoDaysCutoffParameterSensitivity() {
     LocalDate[] valuationDate = {date(2015, 1, 1), date(2015, 1, 8)};
-    double[] time = new double[] {0.0, 0.5, 1.0, 2.0, 5.0, 10.0};
-    double[] rate = new double[] {0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135};
+    DoubleArray time = DoubleArray.of(0.0, 0.5, 1.0, 2.0, 5.0, 10.0);
+    DoubleArray rate = DoubleArray.of(0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135);
 
     for (int loopvaldate = 0; loopvaldate < 2; loopvaldate++) {
       Curve onCurve = InterpolatedNodalCurve.of(
@@ -350,8 +351,8 @@ public class ForwardOvernightAveragedRateObservationFnTest {
   /** Test parameter sensitivity with finite difference sensitivity calculator. No cutoff period. */
   public void rateChfNoCutOffParameterSensitivity() {
     LocalDate[] valuationDate = {date(2015, 1, 1), date(2015, 1, 8)};
-    double[] time = new double[] {0.0, 0.5, 1.0, 2.0, 5.0, 10.0};
-    double[] rate = new double[] {0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135};
+    DoubleArray time = DoubleArray.of(0.0, 0.5, 1.0, 2.0, 5.0, 10.0);
+    DoubleArray rate = DoubleArray.of(0.0100, 0.0110, 0.0115, 0.0130, 0.0135, 0.0135);
 
     for (int loopvaldate = 0; loopvaldate < 2; loopvaldate++) {
       Curve onCurve = InterpolatedNodalCurve.of(

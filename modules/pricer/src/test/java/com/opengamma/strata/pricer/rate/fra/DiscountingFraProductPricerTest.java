@@ -23,13 +23,12 @@ import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.date.DayCount;
 import com.opengamma.strata.basics.date.DayCounts;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
-import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.finance.rate.IborRateObservation;
 import com.opengamma.strata.finance.rate.RateObservation;
 import com.opengamma.strata.finance.rate.fra.ExpandedFra;
@@ -47,6 +46,7 @@ import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.market.sensitivity.ZeroRateSensitivity;
 import com.opengamma.strata.market.value.DiscountFactors;
 import com.opengamma.strata.market.value.IborIndexRates;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.RateObservationFn;
 import com.opengamma.strata.pricer.rate.RatesProvider;
@@ -479,27 +479,26 @@ public class DiscountingFraProductPricerTest {
   private static final ImmutableRatesProvider IMM_PROV;
   static {
     CurveInterpolator interp = Interpolator1DFactory.DOUBLE_QUADRATIC_INSTANCE;
-    double[] time_gbp = new double[] {0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 2.0};
-    double[] rate_gbp = new double[] {0.0160, 0.0165, 0.0155, 0.0155, 0.0155, 0.0150, 0.014};
+    DoubleArray time_gbp = DoubleArray.of(0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 2.0);
+    DoubleArray rate_gbp = DoubleArray.of(0.0160, 0.0165, 0.0155, 0.0155, 0.0155, 0.0150, 0.014);
     InterpolatedNodalCurve dscCurve =
         InterpolatedNodalCurve.of(Curves.zeroRates("GBP-Discount", DAY_COUNT), time_gbp, rate_gbp, interp);
-    double[] time_index = new double[] {0.0, 0.25, 0.5, 1.0};
-    double[] rate_index = new double[] {0.0180, 0.0180, 0.0175, 0.0165};
+    DoubleArray time_index = DoubleArray.of(0.0, 0.25, 0.5, 1.0);
+    DoubleArray rate_index = DoubleArray.of(0.0180, 0.0180, 0.0175, 0.0165);
     InterpolatedNodalCurve indexCurve =
         InterpolatedNodalCurve.of(Curves.zeroRates("GBP-GBPIBOR3M", DAY_COUNT), time_index, rate_index, interp);
     IMM_PROV = ImmutableRatesProvider.builder()
         .valuationDate(VAL_DATE)
         .discountCurves(ImmutableMap.of(GBP, dscCurve))
         .indexCurves(ImmutableMap.of(GBP_LIBOR_3M, indexCurve))
-        .timeSeries(ImmutableMap.of(GBP_LIBOR_3M, LocalDateDoubleTimeSeries.empty()))
         .build();
   }
 
   /**
    * Test par spread sensitivity for ISDA FRA Discounting method. 
    */
-  public void test_parSpreadCurveSensitivity_ISDA() {
-    PointSensitivities sensi = DEFAULT_PRICER.parSpreadCurveSensitivity(FRA, IMM_PROV);
+  public void test_parSpreadSensitivity_ISDA() {
+    PointSensitivities sensi = DEFAULT_PRICER.parSpreadSensitivity(FRA, IMM_PROV);
     CurveCurrencyParameterSensitivities sensiComputed = IMM_PROV.curveParameterSensitivity(sensi);
     CurveCurrencyParameterSensitivities sensiExpected = CAL_FD.sensitivity(IMM_PROV,
         (p) -> CurrencyAmount.of(FRA.getCurrency(), DEFAULT_PRICER.parSpread(FRA, (p))));
@@ -509,8 +508,8 @@ public class DiscountingFraProductPricerTest {
   /**
    * Test par spread sensitivity for NONE FRA Discounting method. 
    */
-  public void test_parSpreadCurveSensitivity_NONE() {
-    PointSensitivities sensi = DEFAULT_PRICER.parSpreadCurveSensitivity(FRA_NONE, IMM_PROV);
+  public void test_parSpreadSensitivity_NONE() {
+    PointSensitivities sensi = DEFAULT_PRICER.parSpreadSensitivity(FRA_NONE, IMM_PROV);
     CurveCurrencyParameterSensitivities sensiComputed = IMM_PROV.curveParameterSensitivity(sensi);
     CurveCurrencyParameterSensitivities sensiExpected = CAL_FD.sensitivity(IMM_PROV,
         (p) -> CurrencyAmount.of(FRA_NONE.getCurrency(), DEFAULT_PRICER.parSpread(FRA_NONE, (p))));
@@ -520,8 +519,8 @@ public class DiscountingFraProductPricerTest {
   /**
    * Test par spread sensitivity for AFMA FRA Discounting method. 
    */
-  public void test_parSpreadCurveSensitivity_AFMA() {
-    PointSensitivities sensi = DEFAULT_PRICER.parSpreadCurveSensitivity(FRA_AFMA, IMM_PROV);
+  public void test_parSpreadSensitivity_AFMA() {
+    PointSensitivities sensi = DEFAULT_PRICER.parSpreadSensitivity(FRA_AFMA, IMM_PROV);
     CurveCurrencyParameterSensitivities sensiComputed = IMM_PROV.curveParameterSensitivity(sensi);
     CurveCurrencyParameterSensitivities sensiExpected = CAL_FD.sensitivity(IMM_PROV,
         (p) -> CurrencyAmount.of(FRA_AFMA.getCurrency(), DEFAULT_PRICER.parSpread(FRA_AFMA, (p))));

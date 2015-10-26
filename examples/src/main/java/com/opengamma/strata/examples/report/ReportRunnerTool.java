@@ -5,28 +5,29 @@
  */
 package com.opengamma.strata.examples.report;
 
+import static com.opengamma.strata.collect.Guavate.toImmutableList;
+
 import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.StringUtils;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
+import com.google.common.base.Strings;
+import com.opengamma.strata.basics.Trade;
 import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.engine.CalculationEngine;
 import com.opengamma.strata.engine.CalculationRules;
 import com.opengamma.strata.engine.Column;
-import com.opengamma.strata.engine.calculations.Results;
+import com.opengamma.strata.engine.calculation.Results;
 import com.opengamma.strata.engine.config.pricing.PricingRules;
 import com.opengamma.strata.engine.marketdata.MarketEnvironment;
 import com.opengamma.strata.examples.engine.ExampleEngine;
 import com.opengamma.strata.examples.marketdata.ExampleMarketData;
 import com.opengamma.strata.examples.marketdata.MarketDataBuilder;
-import com.opengamma.strata.finance.Trade;
-import com.opengamma.strata.function.OpenGammaPricingRules;
+import com.opengamma.strata.finance.FinanceTrade;
+import com.opengamma.strata.function.StandardComponents;
 import com.opengamma.strata.report.Report;
 import com.opengamma.strata.report.ReportCalculationResults;
 import com.opengamma.strata.report.ReportRequirements;
@@ -34,7 +35,7 @@ import com.opengamma.strata.report.ReportRunner;
 import com.opengamma.strata.report.ReportTemplate;
 import com.opengamma.strata.report.cashflow.CashFlowReportRunner;
 import com.opengamma.strata.report.cashflow.CashFlowReportTemplate;
-import com.opengamma.strata.report.format.ReportOutputFormat;
+import com.opengamma.strata.report.framework.format.ReportOutputFormat;
 import com.opengamma.strata.report.trade.TradeReportRunner;
 import com.opengamma.strata.report.trade.TradeReportTemplate;
 
@@ -42,29 +43,55 @@ import com.opengamma.strata.report.trade.TradeReportTemplate;
  * Tool for running a report from the command line.
  */
 public class ReportRunnerTool {
-  
-  @Parameter(names = {"-t", "--template"}, description = "Report template input file", required = true, converter = ReportTemplateParameterConverter.class)
+
+  @Parameter(
+      names = {"-t", "--template"},
+      description = "Report template input file",
+      required = true,
+      converter = ReportTemplateParameterConverter.class)
   private ReportTemplate template;
 
-  @Parameter(names = {"-m", "--marketdata"}, description = "Market data root directory", validateValueWith = MarketDataRootValidator.class)
+  @Parameter(
+      names = {"-m", "--marketdata"},
+      description = "Market data root directory",
+      validateValueWith = MarketDataRootValidator.class)
   private File marketDataRoot;
 
-  @Parameter(names = {"-p", "--portfolio"}, description = "Portfolio input file", required = true, converter = PortfolioParameterConverter.class)
+  @Parameter(
+      names = {"-p", "--portfolio"},
+      description = "Portfolio input file",
+      required = true,
+      converter = PortfolioParameterConverter.class)
   private TradePortfolio portfolio;
 
-  @Parameter(names = {"-d", "--date"}, description = "Valuation date, YYYY-MM-DD", required = true, converter = LocalDateParameterConverter.class)
+  @Parameter(
+      names = {"-d", "--date"},
+      description = "Valuation date, YYYY-MM-DD",
+      required = true,
+      converter = LocalDateParameterConverter.class)
   private LocalDate valuationDate;
 
-  @Parameter(names = {"-f", "--format"}, description = "Report output format, ascii or csv", converter = ReportOutputFormatParameterConverter.class)
+  @Parameter(
+      names = {"-f", "--format"},
+      description = "Report output format, ascii or csv",
+      converter = ReportOutputFormatParameterConverter.class)
   private ReportOutputFormat format = ReportOutputFormat.ASCII_TABLE;
   
-  @Parameter(names = {"-i", "--id"}, description = "An ID by which to select a single trade")
+  @Parameter(
+      names = {"-i", "--id"},
+      description = "An ID by which to select a single trade")
   private String idSearch;
 
-  @Parameter(names = {"-h", "--help"}, description = "Displays this message", help = true)
+  @Parameter(
+      names = {"-h", "--help"},
+      description = "Displays this message",
+      help = true)
   private boolean help;
   
-  @Parameter(names = {"-v", "--version"}, description = "Prints the version of this tool", help = true)
+  @Parameter(
+      names = {"-v", "--version"},
+      description = "Prints the version of this tool",
+      help = true)
   private boolean version;
 
   /**
@@ -105,7 +132,6 @@ public class ReportRunnerTool {
   //-------------------------------------------------------------------------
   private void run() {
     ReportRunner<ReportTemplate> reportRunner = getReportRunner(template);
-
     ReportRequirements requirements = reportRunner.requirements(template);
     ReportCalculationResults calculationResults = runCalculationRequirements(requirements);
 
@@ -124,7 +150,7 @@ public class ReportRunnerTool {
   private ReportCalculationResults runCalculationRequirements(ReportRequirements requirements) {
     List<Column> columns = requirements.getTradeMeasureRequirements();
 
-    PricingRules pricingRules = OpenGammaPricingRules.standard();
+    PricingRules pricingRules = StandardComponents.pricingRules();
 
     MarketDataBuilder marketDataBuilder = marketDataRoot == null ?
         ExampleMarketData.builder() : MarketDataBuilder.ofPath(marketDataRoot.toPath());
@@ -139,12 +165,16 @@ public class ReportRunnerTool {
     CalculationEngine calculationEngine = ExampleEngine.create();
     
     List<Trade> trades;
-    if (StringUtils.isBlank(idSearch)) {
+
+    if (Strings.nullToEmpty(idSearch).trim().isEmpty()) {
       trades = portfolio.getTrades();
     } else {
       trades = portfolio.getTrades().stream()
-          .filter(t -> t.getTradeInfo().getId().isPresent() && t.getTradeInfo().getId().get().getValue().equals(idSearch))
-          .collect(Collectors.toList());
+          .filter(t -> t instanceof FinanceTrade)
+          .map(t -> (FinanceTrade) t)
+          .filter(t -> t.getTradeInfo().getId().isPresent())
+          .filter(t -> t.getTradeInfo().getId().get().getValue().equals(idSearch))
+          .collect(toImmutableList());
       if (trades.size() > 1) {
         throw new IllegalArgumentException(
             Messages.format("More than one trade found matching ID: '{}'", idSearch));
@@ -167,9 +197,9 @@ public class ReportRunnerTool {
   private ReportRunner<ReportTemplate> getReportRunner(ReportTemplate reportTemplate) {
     // double-casts to achieve result type, allowing report runner to be used without external knowledge of template type
     if (reportTemplate instanceof TradeReportTemplate) {
-      return (ReportRunner) new TradeReportRunner();
+      return (ReportRunner) TradeReportRunner.INSTANCE;
     } else if (reportTemplate instanceof CashFlowReportTemplate) {
-      return (ReportRunner) new CashFlowReportRunner();
+      return (ReportRunner) CashFlowReportRunner.INSTANCE;
     }
     throw new IllegalArgumentException(Messages.format("Unsupported report type: {}", reportTemplate.getClass().getSimpleName()));
   }

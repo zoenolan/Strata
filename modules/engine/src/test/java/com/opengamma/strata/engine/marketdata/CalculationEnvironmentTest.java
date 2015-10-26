@@ -10,11 +10,13 @@ import static com.opengamma.strata.collect.TestHelper.date;
 
 import org.testng.annotations.Test;
 
+import com.opengamma.strata.basics.market.TestObservableId;
+import com.opengamma.strata.basics.market.TestObservableKey;
 import com.opengamma.strata.collect.result.FailureException;
 import com.opengamma.strata.collect.result.FailureReason;
 import com.opengamma.strata.collect.result.Result;
-import com.opengamma.strata.engine.calculations.MissingMappingId;
-import com.opengamma.strata.engine.calculations.NoMatchingRuleId;
+import com.opengamma.strata.engine.calculation.MissingMappingId;
+import com.opengamma.strata.engine.calculation.NoMatchingRuleId;
 
 @Test
 public class CalculationEnvironmentTest {

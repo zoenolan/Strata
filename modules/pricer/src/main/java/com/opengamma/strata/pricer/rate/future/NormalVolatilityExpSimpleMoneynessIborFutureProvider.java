@@ -6,10 +6,10 @@
 package com.opengamma.strata.pricer.rate.future;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -25,31 +25,30 @@ import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
-import com.opengamma.analytics.math.interpolation.data.Interpolator1DDataBundle;
-import com.opengamma.analytics.math.surface.InterpolatedDoublesSurface;
 import com.opengamma.strata.basics.date.DayCount;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.tuple.DoublesPair;
 import com.opengamma.strata.market.sensitivity.IborFutureOptionSensitivity;
+import com.opengamma.strata.market.surface.InterpolatedNodalSurface;
 
 /**
  * Data provider of volatility for Ibor future options in the normal or Bachelier model. 
  * <p>
  * The volatility is represented by a surface on the expiration and simple moneyness. 
+ * The expiration is measured in number of days (not time) according to a day-count convention.
  * The simple moneyness can be on the price or on the rate (1-price).
  */
 @BeanDefinition
 public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
     implements NormalVolatilityIborFutureProvider, ImmutableBean {
-  // TODO: Day count handling time, not just dates
 
   /**
    * The normal volatility surface.
-   * The order of the dimensions is expiry/simple moneyness.
+   * The order of the dimensions is expiration/simple moneyness.
    */
   @PropertyDefinition(validate = "notNull")
-  private final InterpolatedDoublesSurface parameters;
+  private final InterpolatedNodalSurface parameters;
   /**
    * Flag indicating if the moneyness is on the price (true) or on the rate (false).
    */
@@ -84,7 +83,7 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
    * @return the provider
    */
   public static NormalVolatilityExpSimpleMoneynessIborFutureProvider of(
-      InterpolatedDoublesSurface surface,
+      InterpolatedNodalSurface surface,
       boolean isMoneynessOnPrice,
       IborIndex index,
       DayCount dayCount,
@@ -96,10 +95,10 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
 
   //-------------------------------------------------------------------------
   @Override
-  public double getVolatility(LocalDate expiryDate, LocalDate fixingDate, double strikePrice, double futurePrice) {
+  public double getVolatility(ZonedDateTime expiration, LocalDate fixingDate, double strikePrice, double futurePrice) {
     double simpleMoneyness = isMoneynessOnPrice ? strikePrice - futurePrice : futurePrice - strikePrice;
-    double expiryTime = relativeYearFraction(expiryDate, null, null); // TODO: time and zone
-    return parameters.getZValue(expiryTime, simpleMoneyness);
+    double expirationTime = relativeTime(expiration);
+    return parameters.zValue(expirationTime, simpleMoneyness);
   }
 
   @Override
@@ -109,27 +108,27 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
 
   //-------------------------------------------------------------------------
   @Override
-  public double relativeYearFraction(LocalDate date, LocalTime time, ZoneId zone) {
-    ArgChecker.notNull(date, "date");
-    return dayCount.relativeYearFraction(valuationDateTime.toLocalDate(), date);
+  public double relativeTime(ZonedDateTime zonedDateTime) {
+    ArgChecker.notNull(zonedDateTime, "date");
+    return dayCount.relativeYearFraction(valuationDateTime.toLocalDate(), zonedDateTime.toLocalDate());
   }
 
   /**
    * Computes the sensitivity to the nodes used in the description of the normal volatility
-   * from a point  sensitivity.
+   * from a point sensitivity.
    * 
    * @param point  the point sensitivity at a given key
    * @return the sensitivity to the surface nodes
    */
   public Map<DoublesPair, Double> nodeSensitivity(IborFutureOptionSensitivity point) {
-    // TODO: should this be on the interface?
     double simpleMoneyness = isMoneynessOnPrice ?
         point.getStrikePrice() - point.getFuturePrice() : point.getFuturePrice() - point.getStrikePrice();
-    double expiryTime = relativeYearFraction(point.getExpiryDate(), null, null); // TODO: time and zone
-    @SuppressWarnings("unchecked")
-    Map<DoublesPair, Double> result = parameters.getInterpolator().getNodeSensitivitiesForValue(
-        (Map<Double, Interpolator1DDataBundle>) parameters.getInterpolatorData(),
-        DoublesPair.of(expiryTime, simpleMoneyness));
+    double expirationTime = relativeTime(point.getExpiration());
+    Map<DoublesPair, Double> ns = parameters.zValueParameterSensitivity(expirationTime, simpleMoneyness);
+    Map<DoublesPair, Double> result = new HashMap<>();
+    for (Entry<DoublesPair, Double> entry : ns.entrySet()) {
+      result.put(entry.getKey(), entry.getValue() * point.getSensitivity());
+    }
     return result;
   }
 
@@ -156,7 +155,7 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
   }
 
   private NormalVolatilityExpSimpleMoneynessIborFutureProvider(
-      InterpolatedDoublesSurface parameters,
+      InterpolatedNodalSurface parameters,
       boolean isMoneynessOnPrice,
       IborIndex index,
       DayCount dayCount,
@@ -190,10 +189,10 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
   //-----------------------------------------------------------------------
   /**
    * Gets the normal volatility surface.
-   * The order of the dimensions is expiry/simple moneyness.
+   * The order of the dimensions is expiration/simple moneyness.
    * @return the value of the property, not null
    */
-  public InterpolatedDoublesSurface getParameters() {
+  public InterpolatedNodalSurface getParameters() {
     return parameters;
   }
 
@@ -297,8 +296,8 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
     /**
      * The meta-property for the {@code parameters} property.
      */
-    private final MetaProperty<InterpolatedDoublesSurface> parameters = DirectMetaProperty.ofImmutable(
-        this, "parameters", NormalVolatilityExpSimpleMoneynessIborFutureProvider.class, InterpolatedDoublesSurface.class);
+    private final MetaProperty<InterpolatedNodalSurface> parameters = DirectMetaProperty.ofImmutable(
+        this, "parameters", NormalVolatilityExpSimpleMoneynessIborFutureProvider.class, InterpolatedNodalSurface.class);
     /**
      * The meta-property for the {@code isMoneynessOnPrice} property.
      */
@@ -373,7 +372,7 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
      * The meta-property for the {@code parameters} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<InterpolatedDoublesSurface> parameters() {
+    public MetaProperty<InterpolatedNodalSurface> parameters() {
       return parameters;
     }
 
@@ -444,7 +443,7 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
    */
   public static final class Builder extends DirectFieldsBeanBuilder<NormalVolatilityExpSimpleMoneynessIborFutureProvider> {
 
-    private InterpolatedDoublesSurface parameters;
+    private InterpolatedNodalSurface parameters;
     private boolean isMoneynessOnPrice;
     private IborIndex index;
     private DayCount dayCount;
@@ -491,7 +490,7 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
     public Builder set(String propertyName, Object newValue) {
       switch (propertyName.hashCode()) {
         case 458736106:  // parameters
-          this.parameters = (InterpolatedDoublesSurface) newValue;
+          this.parameters = (InterpolatedNodalSurface) newValue;
           break;
         case 681457885:  // isMoneynessOnPrice
           this.isMoneynessOnPrice = (Boolean) newValue;
@@ -548,11 +547,11 @@ public final class NormalVolatilityExpSimpleMoneynessIborFutureProvider
     //-----------------------------------------------------------------------
     /**
      * Sets the normal volatility surface.
-     * The order of the dimensions is expiry/simple moneyness.
+     * The order of the dimensions is expiration/simple moneyness.
      * @param parameters  the new value, not null
      * @return this, for chaining, not null
      */
-    public Builder parameters(InterpolatedDoublesSurface parameters) {
+    public Builder parameters(InterpolatedNodalSurface parameters) {
       JodaBeanUtils.notNull(parameters, "parameters");
       this.parameters = parameters;
       return this;

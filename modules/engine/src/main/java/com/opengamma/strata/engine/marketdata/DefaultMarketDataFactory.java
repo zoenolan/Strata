@@ -5,9 +5,9 @@
  */
 package com.opengamma.strata.engine.marketdata;
 
+import static com.opengamma.strata.collect.Guavate.entriesToImmutableMap;
 import static com.opengamma.strata.collect.Guavate.not;
 import static com.opengamma.strata.collect.Guavate.toImmutableList;
-import static com.opengamma.strata.collect.Guavate.toImmutableMap;
 import static com.opengamma.strata.collect.Guavate.toImmutableSet;
 
 import java.util.HashMap;
@@ -18,28 +18,26 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-import org.jooq.lambda.Seq;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.basics.market.MarketDataId;
 import com.opengamma.strata.basics.market.ObservableId;
+import com.opengamma.strata.basics.market.Perturbation;
 import com.opengamma.strata.collect.result.FailureReason;
 import com.opengamma.strata.collect.result.Result;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.tuple.Pair;
 import com.opengamma.strata.engine.marketdata.config.MarketDataConfig;
-import com.opengamma.strata.engine.marketdata.functions.MarketDataFunction;
-import com.opengamma.strata.engine.marketdata.functions.MissingDataAwareObservableFunction;
-import com.opengamma.strata.engine.marketdata.functions.MissingDataAwareTimeSeriesProvider;
-import com.opengamma.strata.engine.marketdata.functions.MissingMappingMarketDataFunction;
-import com.opengamma.strata.engine.marketdata.functions.ObservableMarketDataFunction;
-import com.opengamma.strata.engine.marketdata.functions.TimeSeriesProvider;
+import com.opengamma.strata.engine.marketdata.function.MarketDataFunction;
+import com.opengamma.strata.engine.marketdata.function.MissingDataAwareObservableFunction;
+import com.opengamma.strata.engine.marketdata.function.MissingDataAwareTimeSeriesProvider;
+import com.opengamma.strata.engine.marketdata.function.MissingMappingMarketDataFunction;
+import com.opengamma.strata.engine.marketdata.function.ObservableMarketDataFunction;
+import com.opengamma.strata.engine.marketdata.function.TimeSeriesProvider;
 import com.opengamma.strata.engine.marketdata.mapping.FeedIdMapping;
 import com.opengamma.strata.engine.marketdata.mapping.MissingDataAwareFeedIdMapping;
-import com.opengamma.strata.engine.marketdata.scenarios.Perturbation;
-import com.opengamma.strata.engine.marketdata.scenarios.PerturbationMapping;
-import com.opengamma.strata.engine.marketdata.scenarios.ScenarioDefinition;
+import com.opengamma.strata.engine.marketdata.scenario.PerturbationMapping;
+import com.opengamma.strata.engine.marketdata.scenario.ScenarioDefinition;
 
 /**
  * Co-ordinates building of market data.
@@ -132,13 +130,14 @@ public final class DefaultMarketDataFactory implements MarketDataFactory {
     } else {
       // If the intermediate values are not required then the results are filtered to only include the values
       // requested in the requirements
-      values = Seq.seq(calcEnv.getValues())
-          .filter(tp -> requirements.getNonObservables().contains(tp.v1) || requirements.getObservables().contains(tp.v1))
-          .collect(toImmutableMap(tp -> tp.v1, tp -> tp.v2));
-
-      timeSeries = Seq.seq(calcEnv.getTimeSeries())
-          .filter(tp -> requirements.getTimeSeries().contains(tp.v1))
-          .collect(toImmutableMap(tp -> tp.v1, tp -> tp.v2));
+      values = calcEnv.getValues().entrySet().stream()
+          .filter(
+              tp -> requirements.getNonObservables().contains(tp.getKey()) ||
+                  requirements.getObservables().contains(tp.getKey()))
+          .collect(entriesToImmutableMap());
+      timeSeries = calcEnv.getTimeSeries().entrySet().stream()
+          .filter(tp -> requirements.getTimeSeries().contains(tp.getKey()))
+          .collect(entriesToImmutableMap());
     }
     MarketEnvironment marketEnvironment = MarketEnvironment.builder(calcEnv.getValuationDate())
         .addAllValues(values)
@@ -546,10 +545,8 @@ public final class DefaultMarketDataFactory implements MarketDataFactory {
     if (Result.anyFailures(results)) {
       resultMap.put(id, Result.failure(results));
     } else {
-      List<Result<?>> perturbedValues = Seq.seq(results.stream())
-          .map(Result::getValue)
-          .zipWithIndex()
-          .map(tp -> perturbValue(id, tp.v1, scenarioDefinition, tp.v2.intValue()))
+      List<Result<?>> perturbedValues = IntStream.range(0, results.size())
+          .mapToObj(index -> perturbValue(id, results.get(index).getValue(), scenarioDefinition, index))
           .collect(toImmutableList());
 
       if (Result.anyFailures(perturbedValues)) {
@@ -590,7 +587,7 @@ public final class DefaultMarketDataFactory implements MarketDataFactory {
     // The perturbation is definitely compatible with the market data because the filter matched above
     Perturbation<Object> perturbation = (Perturbation<Object>) mapping.get().getPerturbations().get(scenarioIndex);
     try {
-      return Result.success(perturbation.apply(marketDataValue));
+      return Result.success(perturbation.applyTo(marketDataValue));
     } catch (Exception e) {
       return Result.failure(e);
     }

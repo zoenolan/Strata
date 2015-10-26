@@ -5,7 +5,7 @@
  */
 package com.opengamma.strata.function.calculation.rate.swap;
 
-import static com.opengamma.strata.engine.calculations.function.FunctionUtils.toScenarioResult;
+import static com.opengamma.strata.engine.calculation.function.FunctionUtils.toScenarioResult;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Set;
@@ -14,9 +14,10 @@ import java.util.stream.IntStream;
 import com.google.common.collect.Iterables;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.index.Index;
+import com.opengamma.strata.basics.market.MarketDataKey;
 import com.opengamma.strata.collect.Messages;
-import com.opengamma.strata.engine.calculations.DefaultSingleCalculationMarketData;
-import com.opengamma.strata.engine.calculations.function.result.ScenarioResult;
+import com.opengamma.strata.engine.calculation.DefaultSingleCalculationMarketData;
+import com.opengamma.strata.engine.calculation.function.result.ScenarioResult;
 import com.opengamma.strata.engine.marketdata.CalculationMarketData;
 import com.opengamma.strata.engine.marketdata.SingleCalculationMarketData;
 import com.opengamma.strata.finance.rate.swap.ExpandedSwap;
@@ -27,7 +28,6 @@ import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.NodalCurve;
 import com.opengamma.strata.market.key.DiscountCurveKey;
 import com.opengamma.strata.market.key.MarketDataKeys;
-import com.opengamma.strata.market.key.RateIndexCurveKey;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.CurveCurrencyParameterSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
@@ -94,7 +94,7 @@ public class SwapBucketedGammaPv01Function
 
   // validates that the indices all resolve to the single specified curve
   private void validateSingleCurve(Set<Index> indices, SingleCalculationMarketData marketData, NodalCurve nodalCurve) {
-    Set<RateIndexCurveKey> differentForwardCurves = indices.stream()
+    Set<MarketDataKey<?>> differentForwardCurves = indices.stream()
         .map(MarketDataKeys::indexCurve)
         .filter(k -> !nodalCurve.equals(marketData.getValue(k)))
         .collect(toSet());

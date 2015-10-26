@@ -19,17 +19,19 @@ import java.time.LocalDate;
 
 import org.testng.annotations.Test;
 
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
+import com.opengamma.strata.basics.market.Perturbation;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
+import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.sensitivity.CurveUnitParameterSensitivities;
-import com.opengamma.strata.market.sensitivity.CurveUnitParameterSensitivity;
 import com.opengamma.strata.market.sensitivity.OvernightRateSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 
 /**
  * Test {@link DiscountOvernightIndexRates}.
@@ -46,9 +48,11 @@ public class DiscountOvernightIndexRatesTest {
   private static final CurveName NAME = CurveName.of("TestCurve");
   private static final CurveMetadata METADATA = Curves.zeroRates(NAME, ACT_365F);
   private static final InterpolatedNodalCurve CURVE =
-      InterpolatedNodalCurve.of(METADATA, new double[] {0, 10}, new double[] {0.01, 0.02}, INTERPOLATOR);
+      InterpolatedNodalCurve.of(METADATA, DoubleArray.of(0, 10), DoubleArray.of(0.01, 0.02), INTERPOLATOR);
+  private static final InterpolatedNodalCurve CURVE2 =
+      InterpolatedNodalCurve.of(METADATA, DoubleArray.of(0, 10), DoubleArray.of(0.01, 0.03), INTERPOLATOR);
   private static final ZeroRateDiscountFactors DFCURVE = ZeroRateDiscountFactors.of(GBP, DATE_VAL, CURVE);
-  private static final ZeroRateDiscountFactors DFCURVE2 = ZeroRateDiscountFactors.of(GBP, DATE_VAL, CURVE);
+  private static final ZeroRateDiscountFactors DFCURVE2 = ZeroRateDiscountFactors.of(GBP, DATE_VAL, CURVE2);
 
   private static final double RATE_BEFORE = 0.013d;
   private static final double RATE_VAL = 0.014d;
@@ -81,6 +85,19 @@ public class DiscountOvernightIndexRatesTest {
   }
 
   //-------------------------------------------------------------------------
+  public void test_applyPerturbation() {
+    Perturbation<Curve> perturbation = curve -> CURVE2;
+    DiscountOvernightIndexRates base = DiscountOvernightIndexRates.of(GBP_SONIA, SERIES, DFCURVE);
+    DiscountOvernightIndexRates test = base.applyPerturbation(perturbation);
+    test = test.withDiscountFactors(DFCURVE2);
+    assertEquals(test.getIndex(), GBP_SONIA);
+    assertEquals(test.getValuationDate(), DATE_VAL);
+    assertEquals(test.getTimeSeries(), SERIES);
+    assertEquals(test.getDiscountFactors(), DFCURVE2);
+    assertEquals(test.getCurveName(), NAME);
+    assertEquals(test.getParameterCount(), 2);
+  }
+
   public void test_withDiscountFactors() {
     DiscountOvernightIndexRates test = DiscountOvernightIndexRates.of(GBP_SONIA, SERIES, DFCURVE);
     test = test.withDiscountFactors(DFCURVE2);
@@ -202,7 +219,7 @@ public class DiscountOvernightIndexRatesTest {
     DiscountOvernightIndexRates test = DiscountOvernightIndexRates.of(GBP_SONIA, SERIES_EMPTY, DFCURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_VAL);
     CurveUnitParameterSensitivities expected = CurveUnitParameterSensitivities.of(
-        CurveUnitParameterSensitivity.of(CURVE.getMetadata(), CURVE.yValueParameterSensitivity(relativeYearFraction)));
+        CURVE.yValueParameterSensitivity(relativeYearFraction));
     assertEquals(test.unitParameterSensitivity(DATE_VAL), expected);
   }
 
@@ -210,7 +227,7 @@ public class DiscountOvernightIndexRatesTest {
     DiscountOvernightIndexRates test = DiscountOvernightIndexRates.of(GBP_SONIA, SERIES, DFCURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     CurveUnitParameterSensitivities expected = CurveUnitParameterSensitivities.of(
-        CurveUnitParameterSensitivity.of(CURVE.getMetadata(), CURVE.yValueParameterSensitivity(relativeYearFraction)));
+        CURVE.yValueParameterSensitivity(relativeYearFraction));
     assertEquals(test.unitParameterSensitivity(DATE_AFTER), expected);
   }
 

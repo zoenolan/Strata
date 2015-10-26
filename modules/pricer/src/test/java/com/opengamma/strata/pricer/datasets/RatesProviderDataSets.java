@@ -8,10 +8,6 @@ package com.opengamma.strata.pricer.datasets;
 import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
-import static com.opengamma.strata.basics.index.FxIndices.ECB_EUR_GBP;
-import static com.opengamma.strata.basics.index.FxIndices.ECB_EUR_USD;
-import static com.opengamma.strata.basics.index.FxIndices.WM_EUR_USD;
-import static com.opengamma.strata.basics.index.FxIndices.WM_GBP_USD;
 import static com.opengamma.strata.basics.index.IborIndices.GBP_LIBOR_3M;
 import static com.opengamma.strata.basics.index.IborIndices.GBP_LIBOR_6M;
 import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
@@ -24,17 +20,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.FxMatrix;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
-import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 
 /**
@@ -45,45 +41,32 @@ public class RatesProviderDataSets {
   /** Wednesday. */
   public static final LocalDate VAL_DATE_2014_01_22 = LocalDate.of(2014, 1, 22);
 
-  public static final double[] TIMES_1 = new double[]
-  {0.01, 0.25, 0.50, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 30.0}; // 10 nodes
-  public static final double[] TIMES_2 = new double[]
-  {0.25, 0.50, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 30.0}; // 9 nodes
-  public static final double[] TIMES_3 = new double[]
-  {0.50, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 30.0}; // 8 nodes
-  public static final double[] RATES_1 = new double[]
-  {0.0100, 0.0110, 0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190};
-  public static final double[] RATES_2 = new double[]
-  {0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200};
-  public static final double[] RATES_3 = new double[]
-  {0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200, 0.0210};
-  public static final double[] RATES_1_1 = new double[]
-  {0.0100, 0.0110, 0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190};
-  public static final double[] RATES_2_1 = new double[]
-  {0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200};
-  public static final double[] RATES_3_1 = new double[]
-  {0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200, 0.0210};
-  public static final double[] RATES_1_2 = new double[]
-  {0.0200, 0.0210, 0.0220, 0.0230, 0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290};
-  public static final double[] RATES_2_2 = new double[]
-  {0.0220, 0.0230, 0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290, 0.0300};
-  public static final double[] RATES_3_2 = new double[]
-  {0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290, 0.0300, 0.0310};
+  public static final DoubleArray TIMES_1 = DoubleArray.of(
+      0.01, 0.25, 0.50, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 30.0); // 10 nodes
+  public static final DoubleArray TIMES_2 = DoubleArray.of(
+      0.25, 0.50, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 30.0); // 9 nodes
+  public static final DoubleArray TIMES_3 = DoubleArray.of(
+      0.50, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 30.0); // 8 nodes
+  public static final DoubleArray RATES_1 = DoubleArray.of(
+      0.0100, 0.0110, 0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190);
+  public static final DoubleArray RATES_2 = DoubleArray.of(
+      0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200);
+  public static final DoubleArray RATES_3 = DoubleArray.of(
+      0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200, 0.0210);
+  public static final DoubleArray RATES_1_1 = DoubleArray.of(
+      0.0100, 0.0110, 0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190);
+  public static final DoubleArray RATES_2_1 = DoubleArray.of(
+      0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200);
+  public static final DoubleArray RATES_3_1 = DoubleArray.of(
+      0.0140, 0.0150, 0.0160, 0.0170, 0.0180, 0.0190, 0.0200, 0.0210);
+  public static final DoubleArray RATES_1_2 = DoubleArray.of(
+      0.0200, 0.0210, 0.0220, 0.0230, 0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290);
+  public static final DoubleArray RATES_2_2 = DoubleArray.of(
+      0.0220, 0.0230, 0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290, 0.0300);
+  public static final DoubleArray RATES_3_2 = DoubleArray.of(
+      0.0240, 0.0250, 0.0260, 0.0270, 0.0280, 0.0290, 0.0300, 0.0310);
 
   //-------------------------------------------------------------------------
-  public static final Map<Index, LocalDateDoubleTimeSeries> TIME_SERIES =
-      ImmutableMap.<Index, LocalDateDoubleTimeSeries>builder()
-          .put(USD_FED_FUND, LocalDateDoubleTimeSeries.empty())
-          .put(USD_LIBOR_3M, LocalDateDoubleTimeSeries.empty())
-          .put(USD_LIBOR_6M, LocalDateDoubleTimeSeries.empty())
-          .put(GBP_SONIA, LocalDateDoubleTimeSeries.empty())
-          .put(GBP_LIBOR_3M, LocalDateDoubleTimeSeries.empty())
-          .put(GBP_LIBOR_6M, LocalDateDoubleTimeSeries.empty())
-          .put(WM_GBP_USD, LocalDateDoubleTimeSeries.empty())
-          .put(WM_EUR_USD, LocalDateDoubleTimeSeries.empty())
-          .put(ECB_EUR_GBP, LocalDateDoubleTimeSeries.empty())
-          .put(ECB_EUR_USD, LocalDateDoubleTimeSeries.empty())
-          .build();
   public static final CurveInterpolator INTERPOLATOR = Interpolator1DFactory.LINEAR_INSTANCE;
 
   //-------------------------------------------------------------------------
@@ -114,7 +97,6 @@ public class RatesProviderDataSets {
       .fxMatrix(FX_MATRIX_USD)
       .discountCurves(USD_SINGLE_CCY_MAP)
       .indexCurves(USD_SINGLE_IND_MAP)
-      .timeSeries(TIME_SERIES)
       .build();
 
   //-------------------------------------------------------------------------
@@ -135,7 +117,6 @@ public class RatesProviderDataSets {
       .fxMatrix(FX_MATRIX_USD)
       .discountCurves(USD_MULTI_CCY_MAP)
       .indexCurves(USD_MULTI_IND_MAP)
-      .timeSeries(TIME_SERIES)
       .build();
 
   //-------------------------------------------------------------------------
@@ -168,7 +149,6 @@ public class RatesProviderDataSets {
       .fxMatrix(FX_MATRIX_GBP)
       .discountCurves(GBP_MULTI_CCY_MAP)
       .indexCurves(GBP_MULTI_IND_MAP)
-      .timeSeries(TIME_SERIES)
       .build();
 
   //-------------------------------------------------------------------------
@@ -196,7 +176,6 @@ public class RatesProviderDataSets {
       .fxMatrix(FX_MATRIX_GBP_USD)
       .discountCurves(GBP_USD_MULTI_CCY_MAP)
       .indexCurves(GBP_USD_MULTI_IND_MAP)
-      .timeSeries(TIME_SERIES)
       .build();
 
 }

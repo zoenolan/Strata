@@ -8,15 +8,15 @@ package com.opengamma.strata.pricer.rate;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.ImmutableDefaults;
-import org.joda.beans.ImmutableValidator;
 import org.joda.beans.JodaBeanUtils;
 import org.joda.beans.MetaProperty;
 import org.joda.beans.Property;
@@ -36,9 +36,9 @@ import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.index.OvernightIndex;
 import com.opengamma.strata.basics.index.PriceIndex;
 import com.opengamma.strata.basics.market.MarketDataKey;
-import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.curve.Curve;
+import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.value.DiscountFactors;
 import com.opengamma.strata.market.value.DiscountFxForwardRates;
 import com.opengamma.strata.market.value.DiscountFxIndexRates;
@@ -49,6 +49,8 @@ import com.opengamma.strata.market.value.FxIndexRates;
 import com.opengamma.strata.market.value.IborIndexRates;
 import com.opengamma.strata.market.value.OvernightIndexRates;
 import com.opengamma.strata.market.value.PriceIndexValues;
+import com.opengamma.strata.market.value.SimpleDiscountFactors;
+import com.opengamma.strata.market.value.ValueType;
 import com.opengamma.strata.market.value.ZeroRateDiscountFactors;
 
 /**
@@ -100,12 +102,6 @@ public final class ImmutableRatesProvider
    */
   @PropertyDefinition(validate = "notNull", get = "private")
   private final ImmutableMap<Index, LocalDateDoubleTimeSeries> timeSeries;
-  /**
-   * The additional data, defaulted to an empty map.
-   * This allows application code to access additional market data.
-   */
-  @PropertyDefinition(validate = "notNull")
-  private final ImmutableMap<Class<?>, Object> additionalData;
 
   //-------------------------------------------------------------------------
   @ImmutableDefaults
@@ -113,13 +109,17 @@ public final class ImmutableRatesProvider
     builder.fxMatrix = FxMatrix.empty();
   }
 
-  @ImmutableValidator
-  private void validate() {
-    for (Entry<Class<?>, Object> entry : additionalData.entrySet()) {
-      if (!entry.getKey().isInstance(entry.getValue())) {
-        throw new IllegalArgumentException("Invalid additional data entry: " + entry.getKey().getName());
-      }
-    }
+  //-------------------------------------------------------------------------
+  /**
+   * Finds the curve with the specified name.
+   * 
+   * @param name  the curve name
+   * @return the curve
+   */
+  public Optional<Curve> findCurve(CurveName name) {
+    return Stream.concat(discountCurves.values().stream(), indexCurves.values().stream())
+        .filter(c -> c.getName().equals(name))
+        .findFirst();
   }
 
   //-------------------------------------------------------------------------
@@ -128,27 +128,10 @@ public final class ImmutableRatesProvider
     throw new IllegalArgumentException("Unknown key: " + key.toString());
   }
 
-  @Override
-  public <T> T data(Class<T> type) {
-    ArgChecker.notNull(type, "type");
-    // type safety checked in validate()
-    @SuppressWarnings("unchecked")
-    T result = (T) additionalData.get(type);
-    if (result == null) {
-      throw new IllegalArgumentException("Unknown type: " + type.getName());
-    }
-    return result;
-  }
-
   //-------------------------------------------------------------------------
   // finds the time-series
   private LocalDateDoubleTimeSeries timeSeries(Index index) {
-    ArgChecker.notNull(index, "index");
-    LocalDateDoubleTimeSeries series = timeSeries.get(index);
-    if (series == null) {
-      throw new IllegalArgumentException("Unknown index: " + index.getName());
-    }
-    return series;
+    return timeSeries.getOrDefault(index, LocalDateDoubleTimeSeries.empty());
   }
 
   // finds the index curve
@@ -163,8 +146,6 @@ public final class ImmutableRatesProvider
   //-------------------------------------------------------------------------
   @Override
   public double fxRate(Currency baseCurrency, Currency counterCurrency) {
-    ArgChecker.notNull(baseCurrency, "baseCurrency");
-    ArgChecker.notNull(counterCurrency, "counterCurrency");
     if (baseCurrency.equals(counterCurrency)) {
       return 1d;
     }
@@ -177,6 +158,9 @@ public final class ImmutableRatesProvider
     Curve curve = discountCurves.get(currency);
     if (curve == null) {
       throw new IllegalArgumentException("Unable to find discount curve: " + currency);
+    }
+    if (curve.getMetadata().getYValueType().equals(ValueType.DISCOUNT_FACTOR)) {
+      return SimpleDiscountFactors.of(currency, valuationDate, curve);
     }
     return ZeroRateDiscountFactors.of(currency, valuationDate, curve);
   }
@@ -251,23 +235,19 @@ public final class ImmutableRatesProvider
       Map<Currency, Curve> discountCurves,
       Map<Index, Curve> indexCurves,
       Map<PriceIndex, PriceIndexValues> priceIndexValues,
-      Map<Index, LocalDateDoubleTimeSeries> timeSeries,
-      Map<Class<?>, Object> additionalData) {
+      Map<Index, LocalDateDoubleTimeSeries> timeSeries) {
     JodaBeanUtils.notNull(valuationDate, "valuationDate");
     JodaBeanUtils.notNull(fxMatrix, "fxMatrix");
     JodaBeanUtils.notNull(discountCurves, "discountCurves");
     JodaBeanUtils.notNull(indexCurves, "indexCurves");
     JodaBeanUtils.notNull(priceIndexValues, "priceIndexValues");
     JodaBeanUtils.notNull(timeSeries, "timeSeries");
-    JodaBeanUtils.notNull(additionalData, "additionalData");
     this.valuationDate = valuationDate;
     this.fxMatrix = fxMatrix;
     this.discountCurves = ImmutableMap.copyOf(discountCurves);
     this.indexCurves = ImmutableMap.copyOf(indexCurves);
     this.priceIndexValues = ImmutableMap.copyOf(priceIndexValues);
     this.timeSeries = ImmutableMap.copyOf(timeSeries);
-    this.additionalData = ImmutableMap.copyOf(additionalData);
-    validate();
   }
 
   @Override
@@ -347,16 +327,6 @@ public final class ImmutableRatesProvider
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the additional data, defaulted to an empty map.
-   * This allows application code to access additional market data.
-   * @return the value of the property, not null
-   */
-  public ImmutableMap<Class<?>, Object> getAdditionalData() {
-    return additionalData;
-  }
-
-  //-----------------------------------------------------------------------
-  /**
    * Returns a builder that allows this bean to be mutated.
    * @return the mutable builder, not null
    */
@@ -376,8 +346,7 @@ public final class ImmutableRatesProvider
           JodaBeanUtils.equal(getDiscountCurves(), other.getDiscountCurves()) &&
           JodaBeanUtils.equal(getIndexCurves(), other.getIndexCurves()) &&
           JodaBeanUtils.equal(getPriceIndexValues(), other.getPriceIndexValues()) &&
-          JodaBeanUtils.equal(getTimeSeries(), other.getTimeSeries()) &&
-          JodaBeanUtils.equal(getAdditionalData(), other.getAdditionalData());
+          JodaBeanUtils.equal(getTimeSeries(), other.getTimeSeries());
     }
     return false;
   }
@@ -391,21 +360,19 @@ public final class ImmutableRatesProvider
     hash = hash * 31 + JodaBeanUtils.hashCode(getIndexCurves());
     hash = hash * 31 + JodaBeanUtils.hashCode(getPriceIndexValues());
     hash = hash * 31 + JodaBeanUtils.hashCode(getTimeSeries());
-    hash = hash * 31 + JodaBeanUtils.hashCode(getAdditionalData());
     return hash;
   }
 
   @Override
   public String toString() {
-    StringBuilder buf = new StringBuilder(256);
+    StringBuilder buf = new StringBuilder(224);
     buf.append("ImmutableRatesProvider{");
     buf.append("valuationDate").append('=').append(getValuationDate()).append(',').append(' ');
     buf.append("fxMatrix").append('=').append(getFxMatrix()).append(',').append(' ');
     buf.append("discountCurves").append('=').append(getDiscountCurves()).append(',').append(' ');
     buf.append("indexCurves").append('=').append(getIndexCurves()).append(',').append(' ');
     buf.append("priceIndexValues").append('=').append(getPriceIndexValues()).append(',').append(' ');
-    buf.append("timeSeries").append('=').append(getTimeSeries()).append(',').append(' ');
-    buf.append("additionalData").append('=').append(JodaBeanUtils.toString(getAdditionalData()));
+    buf.append("timeSeries").append('=').append(JodaBeanUtils.toString(getTimeSeries()));
     buf.append('}');
     return buf.toString();
   }
@@ -455,12 +422,6 @@ public final class ImmutableRatesProvider
     private final MetaProperty<ImmutableMap<Index, LocalDateDoubleTimeSeries>> timeSeries = DirectMetaProperty.ofImmutable(
         this, "timeSeries", ImmutableRatesProvider.class, (Class) ImmutableMap.class);
     /**
-     * The meta-property for the {@code additionalData} property.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes" })
-    private final MetaProperty<ImmutableMap<Class<?>, Object>> additionalData = DirectMetaProperty.ofImmutable(
-        this, "additionalData", ImmutableRatesProvider.class, (Class) ImmutableMap.class);
-    /**
      * The meta-properties.
      */
     private final Map<String, MetaProperty<?>> metaPropertyMap$ = new DirectMetaPropertyMap(
@@ -470,8 +431,7 @@ public final class ImmutableRatesProvider
         "discountCurves",
         "indexCurves",
         "priceIndexValues",
-        "timeSeries",
-        "additionalData");
+        "timeSeries");
 
     /**
      * Restricted constructor.
@@ -494,8 +454,6 @@ public final class ImmutableRatesProvider
           return priceIndexValues;
         case 779431844:  // timeSeries
           return timeSeries;
-        case -974458767:  // additionalData
-          return additionalData;
       }
       return super.metaPropertyGet(propertyName);
     }
@@ -564,14 +522,6 @@ public final class ImmutableRatesProvider
       return timeSeries;
     }
 
-    /**
-     * The meta-property for the {@code additionalData} property.
-     * @return the meta-property, not null
-     */
-    public MetaProperty<ImmutableMap<Class<?>, Object>> additionalData() {
-      return additionalData;
-    }
-
     //-----------------------------------------------------------------------
     @Override
     protected Object propertyGet(Bean bean, String propertyName, boolean quiet) {
@@ -588,8 +538,6 @@ public final class ImmutableRatesProvider
           return ((ImmutableRatesProvider) bean).getPriceIndexValues();
         case 779431844:  // timeSeries
           return ((ImmutableRatesProvider) bean).getTimeSeries();
-        case -974458767:  // additionalData
-          return ((ImmutableRatesProvider) bean).getAdditionalData();
       }
       return super.propertyGet(bean, propertyName, quiet);
     }
@@ -617,7 +565,6 @@ public final class ImmutableRatesProvider
     private Map<Index, Curve> indexCurves = ImmutableMap.of();
     private Map<PriceIndex, PriceIndexValues> priceIndexValues = ImmutableMap.of();
     private Map<Index, LocalDateDoubleTimeSeries> timeSeries = ImmutableMap.of();
-    private Map<Class<?>, Object> additionalData = ImmutableMap.of();
 
     /**
      * Restricted constructor.
@@ -637,7 +584,6 @@ public final class ImmutableRatesProvider
       this.indexCurves = beanToCopy.getIndexCurves();
       this.priceIndexValues = beanToCopy.getPriceIndexValues();
       this.timeSeries = beanToCopy.getTimeSeries();
-      this.additionalData = beanToCopy.getAdditionalData();
     }
 
     //-----------------------------------------------------------------------
@@ -656,8 +602,6 @@ public final class ImmutableRatesProvider
           return priceIndexValues;
         case 779431844:  // timeSeries
           return timeSeries;
-        case -974458767:  // additionalData
-          return additionalData;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
@@ -684,9 +628,6 @@ public final class ImmutableRatesProvider
           break;
         case 779431844:  // timeSeries
           this.timeSeries = (Map<Index, LocalDateDoubleTimeSeries>) newValue;
-          break;
-        case -974458767:  // additionalData
-          this.additionalData = (Map<Class<?>, Object>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -726,8 +667,7 @@ public final class ImmutableRatesProvider
           discountCurves,
           indexCurves,
           priceIndexValues,
-          timeSeries,
-          additionalData);
+          timeSeries);
     }
 
     //-----------------------------------------------------------------------
@@ -802,30 +742,17 @@ public final class ImmutableRatesProvider
       return this;
     }
 
-    /**
-     * Sets the additional data, defaulted to an empty map.
-     * This allows application code to access additional market data.
-     * @param additionalData  the new value, not null
-     * @return this, for chaining, not null
-     */
-    public Builder additionalData(Map<Class<?>, Object> additionalData) {
-      JodaBeanUtils.notNull(additionalData, "additionalData");
-      this.additionalData = additionalData;
-      return this;
-    }
-
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(256);
+      StringBuilder buf = new StringBuilder(224);
       buf.append("ImmutableRatesProvider.Builder{");
       buf.append("valuationDate").append('=').append(JodaBeanUtils.toString(valuationDate)).append(',').append(' ');
       buf.append("fxMatrix").append('=').append(JodaBeanUtils.toString(fxMatrix)).append(',').append(' ');
       buf.append("discountCurves").append('=').append(JodaBeanUtils.toString(discountCurves)).append(',').append(' ');
       buf.append("indexCurves").append('=').append(JodaBeanUtils.toString(indexCurves)).append(',').append(' ');
       buf.append("priceIndexValues").append('=').append(JodaBeanUtils.toString(priceIndexValues)).append(',').append(' ');
-      buf.append("timeSeries").append('=').append(JodaBeanUtils.toString(timeSeries)).append(',').append(' ');
-      buf.append("additionalData").append('=').append(JodaBeanUtils.toString(additionalData));
+      buf.append("timeSeries").append('=').append(JodaBeanUtils.toString(timeSeries));
       buf.append('}');
       return buf.toString();
     }

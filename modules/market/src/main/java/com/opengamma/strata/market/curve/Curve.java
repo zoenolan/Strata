@@ -7,6 +7,10 @@ package com.opengamma.strata.market.curve;
 
 import java.time.Period;
 
+import com.opengamma.strata.basics.market.Perturbation;
+import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.market.sensitivity.CurveUnitParameterSensitivity;
+
 /**
  * A curve that maps a {@code double} x-value to a {@code double} y-value.
  * <p>
@@ -30,8 +34,7 @@ public interface Curve {
    * The metadata could be used to describe each parameter in terms of a {@link Period}.
    * <p>
    * The metadata includes an optional list of parameter metadata.
-   * If parameter metadata is not known, the list will be empty.
-   * Otherwise, the size of the parameter metadata list will match the number of parameters of this curve.
+   * If parameter metadata is present, the size of the list will match the number of parameters of this curve.
    * 
    * @return the metadata
    */
@@ -74,7 +77,7 @@ public interface Curve {
    * @return the sensitivity
    * @throws RuntimeException if the sensitivity cannot be calculated
    */
-  public abstract double[] yValueParameterSensitivity(double x);
+  public abstract CurveUnitParameterSensitivity yValueParameterSensitivity(double x);
 
   /**
    * Computes the first derivative of the curve.
@@ -86,5 +89,33 @@ public interface Curve {
    * @throws RuntimeException if the derivative cannot be calculated
    */
   public abstract double firstDerivative(double x);
+
+  /**
+   * Applies the perturbation to this curve.
+   * <p>
+   * This returns a curve that has been changed by the {@link Perturbation} instance.
+   * 
+   * @param perturbation  the perturbation to apply
+   * @return the perturbed curve
+   * @throws RuntimeException if the perturbation cannot be applied
+   */
+  public default Curve applyPerturbation(Perturbation<Curve> perturbation) {
+    return perturbation.applyTo(this);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Converts this curve to a nodal curve.
+   * <p>
+   * A nodal curve is based on specific x-y values, typically with interpolation.
+   * See {@link InterpolatedNodalCurve} for more details.
+   * 
+   * @return the equivalent nodal curve
+   * @throws UnsupportedOperationException if the curve cannot be converted
+   */
+  public default NodalCurve toNodalCurve() {
+    throw new UnsupportedOperationException(Messages.format(
+        "Unable to convert curve '{}' to NodalCurve, type was: {}", getName(), getClass().getName()));
+  }
 
 }
