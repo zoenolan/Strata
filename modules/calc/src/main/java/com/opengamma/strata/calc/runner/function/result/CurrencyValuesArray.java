@@ -70,6 +70,21 @@ public final class CurrencyValuesArray
   }
 
   /**
+   * Returns an instance with the specified currency and values without copying the values array.
+   * <p>
+   * This method reduces the overhead of creating an instance by not making a defensive copy of the values
+   * array at the expense of safety. The caller <strong>must not</strong> mutate the array of values after passing
+   * it to this constructor. Doing so would violate the immutability of this class.
+   *
+   * @param currency  the currency of the values
+   * @param values  the currency values
+   * @return an instance with the specified currency and values
+   */
+  public static CurrencyValuesArray ofUnsafe(Currency currency, double[] values) {
+    return new CurrencyValuesArray(currency, values);
+  }
+
+  /**
    * Returns an instance with the specified currency and values.
    *
    * @param currency  the currency of the values
@@ -166,6 +181,10 @@ public final class CurrencyValuesArray
   @Override
   public Double get(int index) {
     return values[index];
+  }
+
+  public double[] getValuesUnsafe() {
+    return values;
   }
 
   @Override

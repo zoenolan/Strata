@@ -112,6 +112,7 @@ public final class FunctionUtils {
    */
   public static Collector<Double, List<Double>, CurrencyValuesArray> toCurrencyValues(Currency currency) {
     return  Collector.of(
+        // TODO This could be done faster with a hand-rolled list backed by a double[]
         ArrayList::new,
         (list, value) -> list.add(value),
         (l, r) -> { l.addAll(r); return l; },
