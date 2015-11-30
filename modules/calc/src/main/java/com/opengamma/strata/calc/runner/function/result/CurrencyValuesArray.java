@@ -6,6 +6,7 @@
 package com.opengamma.strata.calc.runner.function.result;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -15,6 +16,7 @@ import java.util.stream.Stream;
 import org.joda.beans.Bean;
 import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
+import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
 import org.joda.beans.MetaProperty;
 import org.joda.beans.Property;
@@ -25,6 +27,7 @@ import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
 import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.FxRate;
 import com.opengamma.strata.basics.market.FxRateKey;
 import com.opengamma.strata.calc.marketdata.CalculationMarketData;
@@ -63,7 +66,73 @@ public final class CurrencyValuesArray
    * @return an instance with the specified currency and values
    */
   public static CurrencyValuesArray of(Currency currency, double[] values) {
-    return new CurrencyValuesArray(currency, values);
+    return new CurrencyValuesArray(currency, values.clone());
+  }
+
+  /**
+   * Returns an instance with the specified currency and values.
+   *
+   * @param currency  the currency of the values
+   * @param values  the currency values
+   * @return an instance with the specified currency and values
+   */
+  public static CurrencyValuesArray of(Currency currency, List<Double> values) {
+    int size = values.size();
+    double[] array = new double[size];
+
+    for (int i = 0; i < size; i++) {
+      array[i] = values.get(i);
+    }
+    return new CurrencyValuesArray(currency, array);
+  }
+
+  /**
+   * Returns an instance with the specified values which must all have the same currency.
+   *
+   * @param values  the currency values
+   * @return an instance with the specified currency and values
+   * @throws IllegalArgumentException if the values do not have the same currency
+   */
+  public static CurrencyValuesArray of(List<CurrencyAmount> values) {
+    if (values.isEmpty()) {
+      return CurrencyValuesArray.of(Currency.XXX, new double[0]);
+    }
+    int size = values.size();
+    double[] array = new double[size];
+    Currency currency = values.get(0).getCurrency();
+    array[0] = values.get(0).getAmount();
+
+    for (int i = 1; i < size; i++) {
+      CurrencyAmount currencyAmount = values.get(i);
+
+      if (!currencyAmount.getCurrency().equals(currency)) {
+        throw new IllegalArgumentException(
+            Messages.format(
+                "All currency amounts must have the same currency to construct a CurrencyValuesArray. Found {} and {}",
+                currency,
+                currencyAmount.getCurrency()));
+      }
+      array[i] = currencyAmount.getAmount();
+    }
+    return new CurrencyValuesArray(currency, array);
+  }
+
+  /**
+   * Constructor that doesn't clone the input array to avoid unnecessary copies. The factory methods all
+   * provide an array that is completely private.
+   *
+   * @param currency  the currency of the values
+   * @param values  the currency values
+   */
+  @ImmutableConstructor
+  private CurrencyValuesArray(
+      Currency currency,
+      double[] values) {
+
+    JodaBeanUtils.notNull(currency, "currency");
+    JodaBeanUtils.notNull(values, "values");
+    this.currency = currency;
+    this.values = values;
   }
 
   @Override
@@ -124,15 +193,6 @@ public final class CurrencyValuesArray
    */
   public static CurrencyValuesArray.Builder builder() {
     return new CurrencyValuesArray.Builder();
-  }
-
-  private CurrencyValuesArray(
-      Currency currency,
-      double[] values) {
-    JodaBeanUtils.notNull(currency, "currency");
-    JodaBeanUtils.notNull(values, "values");
-    this.currency = currency;
-    this.values = values.clone();
   }
 
   @Override

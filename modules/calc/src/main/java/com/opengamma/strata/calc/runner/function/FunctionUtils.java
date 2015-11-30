@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.stream.Collector;
 
 import com.google.common.collect.ImmutableList;
+import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.FxConvertible;
+import com.opengamma.strata.calc.runner.function.result.CurrencyValuesArray;
 import com.opengamma.strata.calc.runner.function.result.DefaultScenarioResult;
 import com.opengamma.strata.calc.runner.function.result.FxConvertibleList;
 import com.opengamma.strata.calc.runner.function.result.ScenarioResult;
@@ -82,6 +85,37 @@ public final class FunctionUtils {
         (a, b) -> a.add(b),
         (l, r) -> { l.addAll(r); return l; },
         list -> buildResult(list, convertCurrencies));
+  }
+
+  /**
+   * Returns a collector which can be used at the end of a stream of {@link CurrencyAmount} instances
+   * to build a {@link CurrencyValuesArray}.
+   * <p>
+   * The currency amounts must all have the same currency.
+   *
+   * @return a {@code CurrencyValuesArray} containing the values from the stream
+   */
+  public static Collector<CurrencyAmount, List<CurrencyAmount>, CurrencyValuesArray> toCurrencyValues() {
+    return  Collector.of(
+        ArrayList::new,
+        (list, value) -> list.add(value),
+        (l, r) -> { l.addAll(r); return l; },
+        CurrencyValuesArray::of);
+  }
+
+  /**
+   * Returns a collector which can be used at the end of a stream of doubles representing currency amounts
+   * to build a {@link CurrencyValuesArray}.
+   *
+   * @param currency  the currency
+   * @return a {@code CurrencyValuesArray} containing the values from the stream
+   */
+  public static Collector<Double, List<Double>, CurrencyValuesArray> toCurrencyValues(Currency currency) {
+    return  Collector.of(
+        ArrayList::new,
+        (list, value) -> list.add(value),
+        (l, r) -> { l.addAll(r); return l; },
+        list -> CurrencyValuesArray.of(currency, list));
   }
 
   @SuppressWarnings("unchecked")
