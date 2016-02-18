@@ -153,7 +153,7 @@ public class CapitalIndexedBondPaymentPeriodTest {
     CapitalIndexedBondPaymentPeriod expected = CapitalIndexedBondPaymentPeriod.builder()
         .currency(USD)
         .notional(NOTIONAL)
-        .detachmentDate(DETACHMENT)
+        .detachmentDate(END)
         .startDate(START)
         .endDate(END)
         .unadjustedStartDate(START_UNADJ)

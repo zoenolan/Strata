@@ -158,7 +158,7 @@ public final class CapitalIndexedBondPaymentPeriod
 
   //-------------------------------------------------------------------------
   /**
-   * Creates a payment period with unit real coupon from this instance. 
+   * Creates a payment period with unit real coupon and 0 ex-coupon days from this instance. 
    * <p>
    * The main usage of this method is to create a nominal payment from the final periodic payment. 
    * 
@@ -173,7 +173,7 @@ public final class CapitalIndexedBondPaymentPeriod
         endDate,
         unadjustedStartDate,
         unadjustedEndDate,
-        detachmentDate,
+        endDate,
         rateObservation);
   }
 
