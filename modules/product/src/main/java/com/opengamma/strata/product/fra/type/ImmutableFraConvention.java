@@ -234,6 +234,7 @@ public final class ImmutableFraConvention
    * 
    * @return the spot date offset, not null
    */
+  @Override
   public DaysAdjustment getSpotDateOffset() {
     return spotDateOffset != null ? spotDateOffset : index.getEffectiveDateOffset();
   }
@@ -307,28 +308,6 @@ public final class ImmutableFraConvention
   }
 
   //-------------------------------------------------------------------------
-  /**
-   * Expands this convention, returning an instance where all the optional fields are present.
-   * <p>
-   * This returns an equivalent instance where any empty optional have been filled in.
-   * 
-   * @return the expanded convention
-   */
-  public ImmutableFraConvention expand() {
-    return ImmutableFraConvention.builder()
-        .index(index)
-        .name(getName())
-        .currency(getCurrency())
-        .spotDateOffset(getSpotDateOffset())
-        .businessDayAdjustment(getBusinessDayAdjustment())
-        .paymentDateOffset(getPaymentDateOffset())
-        .fixingDateOffset(getFixingDateOffset())
-        .dayCount(getDayCount())
-        .discounting(getDiscounting())
-        .build();
-  }
-
-  //-------------------------------------------------------------------------
   @Override
   public FraTrade toTrade(
       LocalDate tradeDate,
@@ -358,11 +337,6 @@ public final class ImmutableFraConvention
             .discounting(getDiscounting())
             .build())
         .build();
-  }
-
-  @Override
-  public LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate) {
-    return getSpotDateOffset().adjust(tradeDate);
   }
 
   @Override

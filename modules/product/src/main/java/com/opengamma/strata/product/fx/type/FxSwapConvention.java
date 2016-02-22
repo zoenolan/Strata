@@ -13,6 +13,7 @@ import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.BuySell;
 import com.opengamma.strata.basics.currency.CurrencyPair;
+import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
 import com.opengamma.strata.collect.named.Named;
@@ -63,6 +64,16 @@ public interface FxSwapConvention
    */
   public abstract CurrencyPair getCurrencyPair();
 
+  /**
+   * Gets the offset of the spot value date from the trade date.
+   * <p>
+   * The offset is applied to the trade date to find the start date.
+   * A typical value is "plus 2 business days".
+   * 
+   * @return the spot date offset, not null
+   */
+  public abstract DaysAdjustment getSpotDateOffset();
+
   //-------------------------------------------------------------------------
   /**
    * Creates a trade based on this convention.
@@ -84,7 +95,7 @@ public interface FxSwapConvention
    * @param farLegForwardPoints  the FX points to be added to the FX rate at the far leg
    * @return the trade
    */
-  public default FxSwapTrade toTrade(
+  public default FxSwapTrade createTrade(
       LocalDate tradeDate,
       Period periodToNear,
       Period periodToFar,
@@ -132,7 +143,9 @@ public interface FxSwapConvention
    * @param tradeDate  the trade date
    * @return the spot date
    */
-  public abstract LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate);
+  public default LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate) {
+    return getSpotDateOffset().adjust(tradeDate);
+  }
 
   //-------------------------------------------------------------------------
   /**

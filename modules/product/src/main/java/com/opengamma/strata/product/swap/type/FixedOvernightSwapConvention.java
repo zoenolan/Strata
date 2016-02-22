@@ -12,6 +12,7 @@ import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.BuySell;
+import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.date.Tenor;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -72,6 +73,16 @@ public interface FixedOvernightSwapConvention
    */
   public abstract OvernightRateSwapLegConvention getFloatingLeg();
 
+  /**
+   * Gets the offset of the spot value date from the trade date.
+   * <p>
+   * The offset is applied to the trade date to find the start date.
+   * A typical value is "plus 2 business days".
+   * 
+   * @return the spot date offset, not null
+   */
+  public abstract DaysAdjustment getSpotDateOffset();
+
   //-------------------------------------------------------------------------
   /**
    * Creates a spot-starting trade based on this convention.
@@ -90,14 +101,14 @@ public interface FixedOvernightSwapConvention
    * @param fixedRate  the fixed rate, typically derived from the market
    * @return the trade
    */
-  public default SwapTrade toTrade(
+  public default SwapTrade createTrade(
       LocalDate tradeDate,
       Tenor tenor,
       BuySell buySell,
       double notional,
       double fixedRate) {
 
-    return toTrade(tradeDate, Period.ZERO, tenor, buySell, notional, fixedRate);
+    return createTrade(tradeDate, Period.ZERO, tenor, buySell, notional, fixedRate);
   }
 
   /**
@@ -119,7 +130,7 @@ public interface FixedOvernightSwapConvention
    * @param fixedRate  the fixed rate, typically derived from the market
    * @return the trade
    */
-  public default SwapTrade toTrade(
+  public default SwapTrade createTrade(
       LocalDate tradeDate,
       Period periodToStart,
       Tenor tenor,
@@ -165,7 +176,9 @@ public interface FixedOvernightSwapConvention
    * @param tradeDate  the trade date
    * @return the spot date
    */
-  public abstract LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate);
+  public default LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate) {
+    return getSpotDateOffset().adjust(tradeDate);
+  }
 
   //-------------------------------------------------------------------------
   /**

@@ -102,8 +102,8 @@ public final class ImmutableIborFixingDepositConvention
    * The offset of the spot value date from the trade date, optional with defaulting getter.
    * <p>
    * The offset is applied to the trade date and is typically plus 2 business days.
-   * The start date of the term deposit is equal to the spot date 
-   * and the end date of the term deposit is relative to the start date.
+   * The start date of the deposit is equal to the spot date 
+   * and the end date of the deposit is relative to the start date.
    * <p>
    * This will default to the effective date offset of the index if not specified.
    */
@@ -208,6 +208,7 @@ public final class ImmutableIborFixingDepositConvention
    * 
    * @return the spot date offset, not null
    */
+  @Override
   public DaysAdjustment getSpotDateOffset() {
     return spotDateOffset != null ? spotDateOffset : index.getEffectiveDateOffset();
   }
@@ -246,35 +247,15 @@ public final class ImmutableIborFixingDepositConvention
   }
 
   //-------------------------------------------------------------------------
-  /**
-   * Expands this convention, returning an instance where all the optional fields are present.
-   * <p>
-   * This returns an equivalent instance where any empty optional have been filled in.
-   * 
-   * @return the expanded convention
-   */
-  public ImmutableIborFixingDepositConvention expand() {
-    return ImmutableIborFixingDepositConvention.builder()
-        .index(index)
-        .name(getName())
-        .currency(getCurrency())
-        .spotDateOffset(getSpotDateOffset())
-        .businessDayAdjustment(getBusinessDayAdjustment())
-        .fixingDateOffset(getFixingDateOffset())
-        .dayCount(getDayCount())
-        .build();
-  }
-
-  //-------------------------------------------------------------------------
   @Override
-  public IborFixingDepositTrade toTrade(
+  public IborFixingDepositTrade createTrade(
       LocalDate tradeDate,
       Period depositPeriod,
       BuySell buySell,
       double notional,
       double fixedRate) {
 
-    LocalDate startDate = getSpotDateOffset().adjust(tradeDate);
+    LocalDate startDate = calculateSpotDateFromTradeDate(tradeDate);
     LocalDate endDate = startDate.plus(depositPeriod);
     return toTrade(tradeDate, startDate, endDate, buySell, notional, fixedRate);
   }
@@ -802,8 +783,8 @@ public final class ImmutableIborFixingDepositConvention
      * Sets the offset of the spot value date from the trade date, optional with defaulting getter.
      * <p>
      * The offset is applied to the trade date and is typically plus 2 business days.
-     * The start date of the term deposit is equal to the spot date
-     * and the end date of the term deposit is relative to the start date.
+     * The start date of the deposit is equal to the spot date
+     * and the end date of the deposit is relative to the start date.
      * <p>
      * This will default to the effective date offset of the index if not specified.
      * @param spotDateOffset  the new value

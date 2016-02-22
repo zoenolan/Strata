@@ -13,6 +13,7 @@ import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.BuySell;
 import com.opengamma.strata.basics.currency.CurrencyPair;
+import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.date.Tenor;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -82,11 +83,23 @@ public interface XCcyIborIborSwapConvention
   public abstract IborRateSwapLegConvention getFlatLeg();
 
   /**
+   * Gets the offset of the spot value date from the trade date.
+   * <p>
+   * The offset is applied to the trade date to find the start date.
+   * A typical value is "plus 2 business days".
+   * 
+   * @return the spot date offset, not null
+   */
+  public abstract DaysAdjustment getSpotDateOffset();
+
+  /**
    * Gets the currency pair of the convention.
    * 
    * @return the currency pair
    */
-  public abstract CurrencyPair getCurrencyPair();
+  public default CurrencyPair getCurrencyPair() {
+    return CurrencyPair.of(getSpreadLeg().getCurrency(), getFlatLeg().getCurrency());
+  }
 
   //-------------------------------------------------------------------------
   /**
@@ -107,7 +120,7 @@ public interface XCcyIborIborSwapConvention
    * @param spread  the spread, typically derived from the market
    * @return the trade
    */
-  public default SwapTrade toTrade(
+  public default SwapTrade createTrade(
       LocalDate tradeDate,
       Tenor tenor,
       BuySell buySell,
@@ -115,7 +128,7 @@ public interface XCcyIborIborSwapConvention
       double notionalFlatLeg,
       double spread) {
 
-    return toTrade(tradeDate, Period.ZERO, tenor, buySell, notionalSpreadLeg, notionalFlatLeg, spread);
+    return createTrade(tradeDate, Period.ZERO, tenor, buySell, notionalSpreadLeg, notionalFlatLeg, spread);
   }
 
   /**
@@ -138,7 +151,7 @@ public interface XCcyIborIborSwapConvention
    * @param spread  the spread, typically derived from the market
    * @return the trade
    */
-  public default SwapTrade toTrade(
+  public default SwapTrade createTrade(
       LocalDate tradeDate,
       Period periodToStart,
       Tenor tenor,
@@ -187,7 +200,9 @@ public interface XCcyIborIborSwapConvention
    * @param tradeDate  the trade date
    * @return the spot date
    */
-  public abstract LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate);
+  public default LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate) {
+    return getSpotDateOffset().adjust(tradeDate);
+  }
 
   //-------------------------------------------------------------------------
   /**

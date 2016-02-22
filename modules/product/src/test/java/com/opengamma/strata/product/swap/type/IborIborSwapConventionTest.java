@@ -8,7 +8,6 @@ package com.opengamma.strata.product.swap.type;
 import static com.opengamma.strata.basics.BuySell.BUY;
 import static com.opengamma.strata.basics.PayReceive.PAY;
 import static com.opengamma.strata.basics.PayReceive.RECEIVE;
-import static com.opengamma.strata.basics.date.BusinessDayConventions.FOLLOWING;
 import static com.opengamma.strata.basics.date.HolidayCalendars.GBLO;
 import static com.opengamma.strata.basics.date.Tenor.TENOR_10Y;
 import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_1M;
@@ -29,7 +28,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.product.swap.Swap;
 import com.opengamma.strata.product.swap.SwapTrade;
@@ -41,8 +39,6 @@ import com.opengamma.strata.product.swap.SwapTrade;
 public class IborIborSwapConventionTest {
 
   private static final double NOTIONAL_2M = 2_000_000d;
-  private static final BusinessDayAdjustment BDA_FOLLOW = BusinessDayAdjustment.of(FOLLOWING, GBLO);
-  private static final DaysAdjustment NEXT_SAME_BUS_DAY = DaysAdjustment.ofCalendarDays(0, BDA_FOLLOW);
   private static final DaysAdjustment PLUS_ONE_DAY = DaysAdjustment.ofBusinessDays(1, GBLO);
 
   private static final String NAME = "USD-Swap";
@@ -59,32 +55,24 @@ public class IborIborSwapConventionTest {
     assertEquals(test.getSpotDateOffset(), USD_LIBOR_3M.getEffectiveDateOffset());
   }
 
-  //-------------------------------------------------------------------------
-  public void test_builder_notEnoughData() {
-    assertThrowsIllegalArg(() -> ImmutableIborIborSwapConvention.builder()
-        .spotDateOffset(NEXT_SAME_BUS_DAY)
-        .build());
-  }
-
-  //-------------------------------------------------------------------------
-  public void test_expand() {
-    ImmutableIborIborSwapConvention test = ImmutableIborIborSwapConvention.of(NAME, IBOR3M, IBOR6M).expand();
+  public void test_of_spotDateOffset() {
+    ImmutableIborIborSwapConvention test = ImmutableIborIborSwapConvention.of(NAME, IBOR1M, IBOR3M, PLUS_ONE_DAY);
     assertEquals(test.getName(), NAME);
-    assertEquals(test.getSpreadLeg(), IBOR3M.expand());
-    assertEquals(test.getFlatLeg(), IBOR6M.expand());
-    assertEquals(test.getSpotDateOffset(), USD_LIBOR_3M.getEffectiveDateOffset());
+    assertEquals(test.getSpreadLeg(), IBOR1M);
+    assertEquals(test.getFlatLeg(), IBOR3M);
+    assertEquals(test.getSpotDateOffset(), PLUS_ONE_DAY);
   }
 
-  public void test_expandAllSpecified() {
+  public void test_builder() {
     ImmutableIborIborSwapConvention test = ImmutableIborIborSwapConvention.builder()
         .name(NAME)
-        .spreadLeg(IBOR3M)
-        .flatLeg(IBOR6M)
+        .spreadLeg(IBOR1M)
+        .flatLeg(IBOR3M)
         .spotDateOffset(PLUS_ONE_DAY)
-        .build()
-        .expand();
-    assertEquals(test.getSpreadLeg(), IBOR3M.expand());
-    assertEquals(test.getFlatLeg(), IBOR6M.expand());
+        .build();
+    assertEquals(test.getName(), NAME);
+    assertEquals(test.getSpreadLeg(), IBOR1M);
+    assertEquals(test.getFlatLeg(), IBOR3M);
     assertEquals(test.getSpotDateOffset(), PLUS_ONE_DAY);
   }
 
@@ -94,7 +82,7 @@ public class IborIborSwapConventionTest {
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 5, 7);
     LocalDate endDate = date(2025, 5, 7);
-    SwapTrade test = base.toTrade(tradeDate, TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
     Swap expected = Swap.of(
         IBOR3M.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         IBOR6M.toLeg(startDate, endDate, RECEIVE, NOTIONAL_2M));
@@ -107,7 +95,7 @@ public class IborIborSwapConventionTest {
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 8, 7);
     LocalDate endDate = date(2025, 8, 7);
-    SwapTrade test = base.toTrade(tradeDate, Period.ofMonths(3), TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, Period.ofMonths(3), TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
     Swap expected = Swap.of(
         IBOR3M.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         IBOR6M.toLeg(startDate, endDate, RECEIVE, NOTIONAL_2M));

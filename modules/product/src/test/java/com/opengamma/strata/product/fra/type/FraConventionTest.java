@@ -106,21 +106,24 @@ public class FraConventionTest {
   }
 
   //-------------------------------------------------------------------------
-  public void test_expand() {
-    ImmutableFraConvention test = ImmutableFraConvention.of(GBP_LIBOR_3M).expand();
-    assertEquals(test.getIndex(), GBP_LIBOR_3M);
+  public void test_builder_minSpecified() {
+    ImmutableFraConvention test = ImmutableFraConvention.builder()
+        .index(GBP_LIBOR_3M)
+        .build();
     assertEquals(test.getName(), GBP_LIBOR_3M.getName());
+    assertEquals(test.getIndex(), GBP_LIBOR_3M);
     assertEquals(test.getCurrency(), GBP);
     assertEquals(test.getSpotDateOffset(), GBP_LIBOR_3M.getEffectiveDateOffset());
     assertEquals(test.getBusinessDayAdjustment(), BDA_MOD_FOLLOW);
     assertEquals(test.getPaymentDateOffset(), DaysAdjustment.NONE);
     assertEquals(test.getFixingDateOffset(), GBP_LIBOR_3M.getFixingDateOffset());
-    assertEquals(test.getDayCount(), ACT_365F);
+    assertEquals(test.getDayCount(), GBP_LIBOR_3M.getDayCount());
     assertEquals(test.getDiscounting(), ISDA);
   }
 
-  public void test_expandAllSpecified() {
+  public void test_builder_allSpecified() {
     ImmutableFraConvention test = ImmutableFraConvention.builder()
+        .name(GBP_LIBOR_3M.getName())
         .index(GBP_LIBOR_3M)
         .currency(GBP)
         .spotDateOffset(PLUS_ONE_DAY)
@@ -129,8 +132,8 @@ public class FraConventionTest {
         .fixingDateOffset(MINUS_FIVE_DAYS)
         .dayCount(ACT_360)
         .discounting(FraDiscountingMethod.NONE)
-        .build()
-        .expand();
+        .build();
+    assertEquals(test.getName(), GBP_LIBOR_3M.getName());
     assertEquals(test.getIndex(), GBP_LIBOR_3M);
     assertEquals(test.getCurrency(), GBP);
     assertEquals(test.getSpotDateOffset(), PLUS_ONE_DAY);
@@ -141,42 +144,16 @@ public class FraConventionTest {
     assertEquals(test.getDiscounting(), FraDiscountingMethod.NONE);
   }
 
-  public void test_expand_AUD() {
-    ImmutableFraConvention test = ImmutableFraConvention.of(AUD_INDEX).expand();
-    assertEquals(test.getCurrency(), AUD);
-    assertEquals(test.getSpotDateOffset(), PLUS_TWO_DAYS);
-    assertEquals(test.getBusinessDayAdjustment(), BusinessDayAdjustment.of(MODIFIED_FOLLOWING, SAT_SUN));
-    assertEquals(test.getPaymentDateOffset(), DaysAdjustment.NONE);
-    assertEquals(test.getFixingDateOffset(), MINUS_TWO_DAYS);
-    assertEquals(test.getDayCount(), ACT_360);
+  public void test_builder_AUD() {
+    ImmutableFraConvention test = ImmutableFraConvention.of(AUD_INDEX);
+    assertEquals(test.getIndex(), AUD_INDEX);
     assertEquals(test.getDiscounting(), AFMA);
   }
 
-  public void test_expand_NZD() {
-    ImmutableFraConvention test = ImmutableFraConvention.of(NZD_INDEX).expand();
-    assertEquals(test.getCurrency(), NZD);
-    assertEquals(test.getSpotDateOffset(), PLUS_TWO_DAYS);
-    assertEquals(test.getBusinessDayAdjustment(), BusinessDayAdjustment.of(MODIFIED_FOLLOWING, SAT_SUN));
-    assertEquals(test.getPaymentDateOffset(), DaysAdjustment.NONE);
-    assertEquals(test.getFixingDateOffset(), MINUS_TWO_DAYS);
-    assertEquals(test.getDayCount(), ACT_360);
+  public void test_builder_NZD() {
+    ImmutableFraConvention test = ImmutableFraConvention.of(NZD_INDEX);
+    assertEquals(test.getIndex(), NZD_INDEX);
     assertEquals(test.getDiscounting(), AFMA);
-  }
-
-  //-------------------------------------------------------------------------
-  public void test_toTemplate() {
-    FraConvention base = ImmutableFraConvention.builder()
-        .index(GBP_LIBOR_3M)
-        .spotDateOffset(NEXT_SAME_BUS_DAY)
-        .build();
-    FraTemplate test = base.toTemplate(Period.ofMonths(2));
-    FraTemplate expected = FraTemplate.of(Period.ofMonths(2), Period.ofMonths(5), base);
-    assertEquals(test, expected);
-  }
-
-  public void test_toTemplate_negativePeriod() {
-    FraConvention base = FraConvention.of(GBP_LIBOR_3M);
-    assertThrowsIllegalArg(() -> base.toTemplate(Period.ofMonths(-1)));
   }
 
   //-------------------------------------------------------------------------
@@ -186,7 +163,7 @@ public class FraConventionTest {
         .spotDateOffset(NEXT_SAME_BUS_DAY)
         .build();
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
-    FraTrade test = base.toTrade(tradeDate, Period.ofMonths(3), Period.ofMonths(6), BUY, NOTIONAL_2M, 0.25d);
+    FraTrade test = base.createTrade(tradeDate, Period.ofMonths(3), Period.ofMonths(6), BUY, NOTIONAL_2M, 0.25d);
     Fra expected = Fra.builder()
         .buySell(BUY)
         .notional(NOTIONAL_2M)

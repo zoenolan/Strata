@@ -55,12 +55,8 @@ public class XCcyIborIborSwapTemplateTest {
       .index(IborIndices.USD_LIBOR_3M)
       .accrualBusinessDayAdjustment(BusinessDayAdjustment.of(MODIFIED_FOLLOWING, EUTA_USNY))
       .build();
-  private static final XCcyIborIborSwapConvention CONV = ImmutableXCcyIborIborSwapConvention.builder()
-      .name("EUR-EURIBOR-3M-USD-LIBOR-3M")
-      .spreadLeg(EUR3M)
-      .flatLeg(USD3M)
-      .spotDateOffset(PLUS_TWO_DAY)
-      .build();
+  private static final XCcyIborIborSwapConvention CONV =
+      ImmutableXCcyIborIborSwapConvention.of("EUR-EURIBOR-3M-USD-LIBOR-3M", EUR3M, USD3M, PLUS_TWO_DAY);
 
   //-------------------------------------------------------------------------
   public void test_of_spot() {
@@ -87,12 +83,12 @@ public class XCcyIborIborSwapTemplateTest {
   }
 
   //-------------------------------------------------------------------------
-  public void test_toTrade() {
+  public void test_createTrade() {
     XCcyIborIborSwapTemplate base = XCcyIborIborSwapTemplate.of(Period.ofMonths(3), TENOR_10Y, CONV);
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 8, 7);
     LocalDate endDate = date(2025, 8, 7);
-    SwapTrade test = base.toTrade(tradeDate, BUY, NOTIONAL_2M, NOTIONAL_2M * FX_EUR_USD, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, BUY, NOTIONAL_2M, NOTIONAL_2M * FX_EUR_USD, 0.25d);
     Swap expected = Swap.of(
         EUR3M.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         USD3M.toLeg(startDate, endDate, RECEIVE, NOTIONAL_2M * FX_EUR_USD));
@@ -104,13 +100,9 @@ public class XCcyIborIborSwapTemplateTest {
   public void coverage() {
     XCcyIborIborSwapTemplate test = XCcyIborIborSwapTemplate.of(Period.ofMonths(3), TENOR_10Y, CONV);
     coverImmutableBean(test);
-    DaysAdjustment da2 = DaysAdjustment.ofBusinessDays(1, EUTA);
-    XCcyIborIborSwapConvention conv2 = ImmutableXCcyIborIborSwapConvention.builder()
-        .name("XXX")
-        .spreadLeg(USD3M)
-        .flatLeg(EUR3M)
-        .spotDateOffset(da2)
-        .build();
+    DaysAdjustment bda2 = DaysAdjustment.ofBusinessDays(1, EUTA);
+    XCcyIborIborSwapConvention conv2 =
+        ImmutableXCcyIborIborSwapConvention.of("XXX", USD3M, EUR3M, bda2);
     XCcyIborIborSwapTemplate test2 = XCcyIborIborSwapTemplate.of(Period.ofMonths(2), TENOR_2Y, conv2);
     coverBeanEquals(test, test2);
   }

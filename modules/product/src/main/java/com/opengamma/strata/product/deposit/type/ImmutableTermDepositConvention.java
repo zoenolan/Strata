@@ -87,7 +87,7 @@ public final class ImmutableTermDepositConvention
    * The start date of the term deposit is equal to the spot date 
    * and the end date of the term deposit is relative to the start date.
    */
-  @PropertyDefinition(validate = "notNull")
+  @PropertyDefinition(validate = "notNull", overrideGet = true)
   private final DaysAdjustment spotDateOffset;
 
   //-----------------------------------------------------------------------
@@ -129,27 +129,15 @@ public final class ImmutableTermDepositConvention
   }
 
   //-------------------------------------------------------------------------
-  /**
-   * Expands this convention, returning an instance where all the optional fields are present.
-   * <p>
-   * This returns an equivalent instance where any empty optional have been filled in.
-   * 
-   * @return the expanded convention
-   */
-  public ImmutableTermDepositConvention expand() {
-    return toBuilder().name(getName()).build();
-  }
-
-  //-------------------------------------------------------------------------
   @Override
-  public TermDepositTrade toTrade(
+  public TermDepositTrade createTrade(
       LocalDate tradeDate,
       Period depositPeriod,
       BuySell buySell,
       double notional,
       double rate) {
 
-    LocalDate startDate = getSpotDateOffset().adjust(tradeDate);
+    LocalDate startDate = calculateSpotDateFromTradeDate(tradeDate);
     LocalDate endDate = startDate.plus(depositPeriod);
     return toTrade(tradeDate, startDate, endDate, buySell, notional, rate);
   }
@@ -288,6 +276,7 @@ public final class ImmutableTermDepositConvention
    * and the end date of the term deposit is relative to the start date.
    * @return the value of the property, not null
    */
+  @Override
   public DaysAdjustment getSpotDateOffset() {
     return spotDateOffset;
   }

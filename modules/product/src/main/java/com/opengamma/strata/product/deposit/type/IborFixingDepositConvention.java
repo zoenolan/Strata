@@ -12,6 +12,7 @@ import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.BuySell;
+import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -84,31 +85,15 @@ public interface IborFixingDepositConvention
    */
   public abstract IborIndex getIndex();
 
-  //-------------------------------------------------------------------------
   /**
-   * Creates a template based on this convention.
+   * Gets the offset of the spot value date from the trade date.
    * <p>
-   * This returns a template based on this convention.
-   * The period from the start date to the end date will be the tenor of the index.
+   * The offset is applied to the trade date to find the start date.
+   * A typical value is "plus 2 business days".
    * 
-   * @return the template
+   * @return the spot date offset, not null
    */
-  public default IborFixingDepositTemplate toTemplate() {
-    return toTemplate(getIndex().getTenor().getPeriod());
-  }
-
-  /**
-   * Creates a template based on this convention, specifying the period from start to end.
-   * <p>
-   * This returns a template based on this convention.
-   * The period from the start date to the end date is specified.
-   * 
-   * @param depositPeriod  the period from the start date to the end date
-   * @return the template
-   */
-  public default IborFixingDepositTemplate toTemplate(Period depositPeriod) {
-    return IborFixingDepositTemplate.of(depositPeriod, this);
-  }
+  public abstract DaysAdjustment getSpotDateOffset();
 
   //-------------------------------------------------------------------------
   /**
@@ -127,7 +112,7 @@ public interface IborFixingDepositConvention
    * @param fixedRate  the fixed rate, typically derived from the market
    * @return the trade
    */
-  public abstract IborFixingDepositTrade toTrade(
+  public abstract IborFixingDepositTrade createTrade(
       LocalDate tradeDate,
       Period depositPeriod,
       BuySell buySell,
@@ -157,6 +142,17 @@ public interface IborFixingDepositConvention
       BuySell buySell,
       double notional,
       double fixedRate);
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the spot date from the trade date.
+   * 
+   * @param tradeDate  the trade date
+   * @return the spot date
+   */
+  public default LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate) {
+    return getSpotDateOffset().adjust(tradeDate);
+  }
 
   //-------------------------------------------------------------------------
   /**

@@ -12,6 +12,7 @@ import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.BuySell;
+import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -84,21 +85,15 @@ public interface FraConvention
    */
   public abstract IborIndex getIndex();
 
-  //-------------------------------------------------------------------------
   /**
-   * Creates a template based on this convention, specifying the period to start.
+   * Gets the offset of the spot value date from the trade date.
    * <p>
-   * This returns a template based on this convention.
-   * The period from the spot date to the start date is specified.
-   * The period from the spot date to the end date will be the period to start
-   * plus the tenor of the index.
+   * The offset is applied to the trade date to find the start date.
+   * A typical value is "plus 2 business days".
    * 
-   * @param periodToStart  the period from the spot date to the start date
-   * @return the template
+   * @return the spot date offset, not null
    */
-  public default FraTemplate toTemplate(Period periodToStart) {
-    return FraTemplate.of(periodToStart, periodToStart.plus(getIndex().getTenor().getPeriod()), this);
-  }
+  public abstract DaysAdjustment getSpotDateOffset();
 
   //-------------------------------------------------------------------------
   /**
@@ -120,7 +115,7 @@ public interface FraConvention
    * @param fixedRate  the fixed rate, typically derived from the market
    * @return the trade
    */
-  public default FraTrade toTrade(
+  public default FraTrade createTrade(
       LocalDate tradeDate,
       Period periodToStart,
       Period periodToEnd,
@@ -165,7 +160,9 @@ public interface FraConvention
    * @param tradeDate  the trade date
    * @return the spot date
    */
-  public abstract LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate);
+  public default LocalDate calculateSpotDateFromTradeDate(LocalDate tradeDate) {
+    return getSpotDateOffset().adjust(tradeDate);
+  }
 
   //-------------------------------------------------------------------------
   /**

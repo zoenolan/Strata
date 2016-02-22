@@ -64,37 +64,28 @@ public class ThreeLegBasisSwapConventionTest {
     assertEquals(test.getSpotDateOffset(), EUR_EURIBOR_6M.getEffectiveDateOffset());
   }
 
-  //-------------------------------------------------------------------------
-  public void test_builder_notEnoughData() {
-    assertThrowsIllegalArg(() -> ImmutableThreeLegBasisSwapConvention.builder()
-        .spotDateOffset(PLUS_ONE_DAY)
-        .build());
-  }
-
-  //-------------------------------------------------------------------------
-  public void test_expand() {
+  public void test_of_spotDateOffset() {
     ImmutableThreeLegBasisSwapConvention test =
-        ImmutableThreeLegBasisSwapConvention.of(NAME, FIXED, IBOR6M, IBOR12M).expand();
+        ImmutableThreeLegBasisSwapConvention.of(NAME, FIXED, IBOR6M, IBOR12M, PLUS_ONE_DAY);
     assertEquals(test.getName(), NAME);
-    assertEquals(test.getSpreadLeg(), FIXED.expand());
-    assertEquals(test.getSpreadFloatingLeg(), IBOR6M.expand());
-    assertEquals(test.getFlatFloatingLeg(), IBOR12M.expand());
-    assertEquals(test.getSpotDateOffset(), EUR_EURIBOR_6M.getEffectiveDateOffset());
+    assertEquals(test.getSpreadLeg(), FIXED);
+    assertEquals(test.getSpreadFloatingLeg(), IBOR6M);
+    assertEquals(test.getFlatFloatingLeg(), IBOR12M);
+    assertEquals(test.getSpotDateOffset(), PLUS_ONE_DAY);
   }
 
-  public void test_expandAllSpecified() {
+  public void test_builder() {
     ImmutableThreeLegBasisSwapConvention test = ImmutableThreeLegBasisSwapConvention.builder()
         .name(NAME)
         .spreadLeg(FIXED)
         .spreadFloatingLeg(IBOR6M)
         .flatFloatingLeg(IBOR12M)
         .spotDateOffset(PLUS_ONE_DAY)
-        .build()
-        .expand();
+        .build();
     assertEquals(test.getName(), NAME);
-    assertEquals(test.getSpreadLeg(), FIXED.expand());
-    assertEquals(test.getSpreadFloatingLeg(), IBOR6M.expand());
-    assertEquals(test.getFlatFloatingLeg(), IBOR12M.expand());
+    assertEquals(test.getSpreadLeg(), FIXED);
+    assertEquals(test.getSpreadFloatingLeg(), IBOR6M);
+    assertEquals(test.getFlatFloatingLeg(), IBOR12M);
     assertEquals(test.getSpotDateOffset(), PLUS_ONE_DAY);
   }
 
@@ -104,7 +95,7 @@ public class ThreeLegBasisSwapConventionTest {
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 5, 7);
     LocalDate endDate = date(2025, 5, 7);
-    SwapTrade test = base.toTrade(tradeDate, TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
     Swap expected = Swap.of(
         FIXED.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         IBOR6M.toLeg(startDate, endDate, PAY, NOTIONAL_2M),
@@ -118,7 +109,7 @@ public class ThreeLegBasisSwapConventionTest {
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 8, 7);
     LocalDate endDate = date(2025, 8, 7);
-    SwapTrade test = base.toTrade(tradeDate, Period.ofMonths(3), TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, Period.ofMonths(3), TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
     Swap expected = Swap.of(
         FIXED.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         IBOR6M.toLeg(startDate, endDate, PAY, NOTIONAL_2M),

@@ -50,7 +50,6 @@ public class FixedOvernightSwapConventionTest {
   private static final double NOTIONAL_2M = 2_000_000d;
   private static final BusinessDayAdjustment BDA_FOLLOW = BusinessDayAdjustment.of(FOLLOWING, GBLO);
   private static final BusinessDayAdjustment BDA_MOD_FOLLOW = BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO);
-  private static final DaysAdjustment NEXT_SAME_BUS_DAY = DaysAdjustment.ofCalendarDays(0, BDA_FOLLOW);
   private static final DaysAdjustment PLUS_ONE_DAY = DaysAdjustment.ofBusinessDays(1, GBLO);
   private static final DaysAdjustment PLUS_TWO_DAYS = DaysAdjustment.ofBusinessDays(2, GBLO);
 
@@ -68,42 +67,24 @@ public class FixedOvernightSwapConventionTest {
 
   //-------------------------------------------------------------------------
   public void test_of() {
-    ImmutableFixedOvernightSwapConvention test = ImmutableFixedOvernightSwapConvention.of(
-        NAME, FIXED, FFUND_LEG, PLUS_TWO_DAYS);
+    ImmutableFixedOvernightSwapConvention test =
+        ImmutableFixedOvernightSwapConvention.of(NAME, FIXED, FFUND_LEG, PLUS_TWO_DAYS);
     assertEquals(test.getName(), NAME);
     assertEquals(test.getFixedLeg(), FIXED);
     assertEquals(test.getFloatingLeg(), FFUND_LEG);
     assertEquals(test.getSpotDateOffset(), PLUS_TWO_DAYS);
   }
 
-  //-------------------------------------------------------------------------
-  public void test_builder_notEnoughData() {
-    assertThrowsIllegalArg(() -> ImmutableFixedOvernightSwapConvention.builder()
-        .spotDateOffset(NEXT_SAME_BUS_DAY)
-        .build());
-  }
-
-  //-------------------------------------------------------------------------
-  public void test_expand() {
-    ImmutableFixedOvernightSwapConvention test = ImmutableFixedOvernightSwapConvention.of(
-        NAME, FIXED, FFUND_LEG, PLUS_TWO_DAYS).expand();
-    assertEquals(test.getName(), NAME);
-    assertEquals(test.getFixedLeg(), FIXED.expand());
-    assertEquals(test.getFloatingLeg(), FFUND_LEG.expand());
-    assertEquals(test.getSpotDateOffset(), PLUS_TWO_DAYS);
-  }
-
-  public void test_expandAllSpecified() {
+  public void test_builder() {
     ImmutableFixedOvernightSwapConvention test = ImmutableFixedOvernightSwapConvention.builder()
         .name(NAME)
         .fixedLeg(FIXED)
         .floatingLeg(FFUND_LEG)
         .spotDateOffset(PLUS_ONE_DAY)
-        .build()
-        .expand();
+        .build();
     assertEquals(test.getName(), NAME);
-    assertEquals(test.getFixedLeg(), FIXED.expand());
-    assertEquals(test.getFloatingLeg(), FFUND_LEG.expand());
+    assertEquals(test.getFixedLeg(), FIXED);
+    assertEquals(test.getFloatingLeg(), FFUND_LEG);
     assertEquals(test.getSpotDateOffset(), PLUS_ONE_DAY);
   }
 
@@ -113,7 +94,7 @@ public class FixedOvernightSwapConventionTest {
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 5, 7);
     LocalDate endDate = date(2025, 5, 7);
-    SwapTrade test = base.toTrade(tradeDate, TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
     Swap expected = Swap.of(
         FIXED.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         FFUND_LEG.toLeg(startDate, endDate, RECEIVE, NOTIONAL_2M));
@@ -126,7 +107,7 @@ public class FixedOvernightSwapConventionTest {
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
     LocalDate startDate = date(2015, 8, 7);
     LocalDate endDate = date(2025, 8, 7);
-    SwapTrade test = base.toTrade(tradeDate, Period.ofMonths(3), TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
+    SwapTrade test = base.createTrade(tradeDate, Period.ofMonths(3), TENOR_10Y, BUY, NOTIONAL_2M, 0.25d);
     Swap expected = Swap.of(
         FIXED.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         FFUND_LEG.toLeg(startDate, endDate, RECEIVE, NOTIONAL_2M));
