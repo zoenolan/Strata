@@ -32,6 +32,8 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.product.rate.InflationBondInterpolatedRateObservation;
+import com.opengamma.strata.product.rate.InflationBondMonthlyRateObservation;
 import com.opengamma.strata.product.rate.InflationInterpolatedRateObservation;
 import com.opengamma.strata.product.rate.InflationMonthlyRateObservation;
 import com.opengamma.strata.product.rate.RateObservation;
@@ -152,8 +154,9 @@ public final class CapitalIndexedBondPaymentPeriod
     ArgChecker.inOrderNotEqual(
         this.unadjustedStartDate, this.unadjustedEndDate, "unadjustedStartDate", "unadjustedEndDate");
     ArgChecker.inOrderOrEqual(this.detachmentDate, this.endDate, "detachmentDate", "endDate");
-    ArgChecker.isTrue(rateObservation instanceof InflationInterpolatedRateObservation ||
-        rateObservation instanceof InflationMonthlyRateObservation, "rateObservation must be inflation rate observation");
+    ArgChecker.isTrue(rateObservation instanceof InflationBondInterpolatedRateObservation ||
+        rateObservation instanceof InflationBondMonthlyRateObservation,
+        "rateObservation must be inflation bond rate observation");
   }
 
   //-------------------------------------------------------------------------

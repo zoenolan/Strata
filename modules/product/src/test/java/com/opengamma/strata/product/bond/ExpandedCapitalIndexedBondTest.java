@@ -29,7 +29,6 @@ import org.testng.annotations.Test;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.BusinessDayConventions;
 import com.opengamma.strata.basics.date.DaysAdjustment;
-import com.opengamma.strata.basics.schedule.SchedulePeriod;
 import com.opengamma.strata.basics.value.ValueSchedule;
 import com.opengamma.strata.collect.id.StandardId;
 import com.opengamma.strata.product.rate.RateObservation;
@@ -50,6 +49,7 @@ public class ExpandedCapitalIndexedBondTest {
       .interpolated(true)
       .build();
   private static final double NOTIONAL = 10_000_000d;
+  private static final double START_INDEX = 198.475;
   private static final BusinessDayAdjustment SCHEDULE_ADJ =
       BusinessDayAdjustment.of(BusinessDayConventions.FOLLOWING, USNY);
   private static final DaysAdjustment SETTLE_OFFSET = DaysAdjustment.ofBusinessDays(2, USNY);
@@ -59,11 +59,9 @@ public class ExpandedCapitalIndexedBondTest {
     LocalDate[] unAdjDates = new LocalDate[] {LocalDate.of(2008, 1, 13), LocalDate.of(2008, 7, 13),
       LocalDate.of(2009, 1, 13), LocalDate.of(2009, 7, 13), LocalDate.of(2010, 1, 13) };
     for (int i = 0; i < 4; ++i) {
-      LocalDate bondStart = SCHEDULE_ADJ.adjust(unAdjDates[0]);
       LocalDate start = SCHEDULE_ADJ.adjust(unAdjDates[i]);
       LocalDate end = SCHEDULE_ADJ.adjust(unAdjDates[i + 1]);
-      SchedulePeriod period = SchedulePeriod.of(bondStart, end, unAdjDates[0], unAdjDates[i + 1]);
-      RateObservation obs = RATE_CALC.createRateObservation(period);
+      RateObservation obs = RATE_CALC.createRateObservation(end, START_INDEX);
       PERIODIC[i] = CapitalIndexedBondPaymentPeriod.builder()
           .currency(USD)
           .startDate(start)

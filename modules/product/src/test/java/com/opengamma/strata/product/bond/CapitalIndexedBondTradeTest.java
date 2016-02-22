@@ -50,6 +50,7 @@ public class CapitalIndexedBondTradeTest {
 
   private static final long QUANTITY = 10;
   private static final double NOTIONAL = 10_000_000d;
+  private static final double START_INDEX = 198.475;
   private static final LocalDate START = LocalDate.of(2006, 1, 15);
   private static final LocalDate END = LocalDate.of(2016, 1, 15);
   private static final ValueSchedule COUPON = ValueSchedule.of(0.02);
@@ -75,6 +76,7 @@ public class CapitalIndexedBondTradeTest {
       .yieldConvention(US_IL_REAL)
       .settlementDateOffset(SETTLE_OFFSET)
       .periodicSchedule(SCHEDULE)
+      .startIndexValue(START_INDEX)
       .build();
   private static final StandardId SECURITY_ID = StandardId.of("OG-Ticker", "BOND1");
   private static final Security<CapitalIndexedBond> SECURITY = UnitSecurity.builder(PRODUCT).standardId(SECURITY_ID).build();

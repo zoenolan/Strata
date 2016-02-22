@@ -34,7 +34,6 @@ import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.RollConventions;
-import com.opengamma.strata.basics.schedule.SchedulePeriod;
 import com.opengamma.strata.basics.schedule.StubConvention;
 import com.opengamma.strata.basics.value.ValueAdjustment;
 import com.opengamma.strata.basics.value.ValueSchedule;
@@ -50,6 +49,7 @@ import com.opengamma.strata.product.swap.InflationRateCalculation;
 public class CapitalIndexedBondTest {
 
   private static final double NOTIONAL = 10_000_000d;
+  private static final double START_INDEX = 198.475;
   private static final double[] COUPONS = new double[] {0.01, 0.015, 0.012, 0.09 };
   private static final ValueSchedule COUPON;
   static {
@@ -89,6 +89,7 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(SETTLE_OFFSET)
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build();
     assertEquals(test.getCurrency(), USD);
     assertEquals(test.getDayCount(), ACT_ACT_ICMA);
@@ -99,6 +100,7 @@ public class CapitalIndexedBondTest {
     assertEquals(test.getRateCalculation(), RATE_CALC);
     assertEquals(test.getSettlementDateOffset(), SETTLE_OFFSET);
     assertEquals(test.getYieldConvention(), US_IL_REAL);
+    assertEquals(test.getStartIndexValue(), START_INDEX);
   }
 
   public void test_builder_min() {
@@ -111,6 +113,7 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(SETTLE_OFFSET)
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build();
     assertEquals(test.getCurrency(), USD);
     assertEquals(test.getDayCount(), ACT_ACT_ICMA);
@@ -121,6 +124,7 @@ public class CapitalIndexedBondTest {
     assertEquals(test.getRateCalculation(), RATE_CALC);
     assertEquals(test.getSettlementDateOffset(), SETTLE_OFFSET);
     assertEquals(test.getYieldConvention(), US_IL_REAL);
+    assertEquals(test.getStartIndexValue(), START_INDEX);
   }
 
   public void test_builder_fail() {
@@ -135,6 +139,7 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(DaysAdjustment.ofBusinessDays(-2, USNY))
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build());
     // positive ex-coupon days
     assertThrowsIllegalArg(() -> CapitalIndexedBond.builder()
@@ -148,6 +153,7 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(SETTLE_OFFSET)
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build());
   }
 
@@ -162,17 +168,16 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(SETTLE_OFFSET)
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build();
     LocalDate[] unAdjDates = new LocalDate[] {LocalDate.of(2008, 1, 13), LocalDate.of(2008, 7, 13),
       LocalDate.of(2009, 1, 13), LocalDate.of(2009, 7, 13), LocalDate.of(2010, 1, 13) };
     CapitalIndexedBondPaymentPeriod [] periodic =new CapitalIndexedBondPaymentPeriod[4];
     for (int i = 0; i < 4; ++i) {
-      LocalDate bondStart = SCHEDULE_ADJ.adjust(unAdjDates[0]);
       LocalDate start = SCHEDULE_ADJ.adjust(unAdjDates[i]);
       LocalDate end = SCHEDULE_ADJ.adjust(unAdjDates[i+1]);
       LocalDate detachment = EX_COUPON.adjust(end);
-      SchedulePeriod period = SchedulePeriod.of(bondStart, end, unAdjDates[0], unAdjDates[i + 1]);
-      RateObservation obs = RATE_CALC.createRateObservation(period);
+      RateObservation obs = RATE_CALC.createRateObservation(end, START_INDEX);
       periodic[i] = CapitalIndexedBondPaymentPeriod.builder()
           .currency(USD)
           .startDate(start)
@@ -208,6 +213,7 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(SETTLE_OFFSET)
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build();
     coverImmutableBean(test1);
     CapitalIndexedBond test2 = CapitalIndexedBond
@@ -225,6 +231,7 @@ public class CapitalIndexedBondTest {
         .legalEntityId(StandardId.of("OG-Ticker", "US-Govt-1"))
         .yieldConvention(INDEX_LINKED_FLOAT)
         .settlementDateOffset(DaysAdjustment.ofBusinessDays(2, GBLO))
+        .startIndexValue(124.556)
         .periodicSchedule(
             PeriodicSchedule.of(
                 START, END, FREQUENCY,
@@ -246,6 +253,7 @@ public class CapitalIndexedBondTest {
         .yieldConvention(US_IL_REAL)
         .settlementDateOffset(SETTLE_OFFSET)
         .periodicSchedule(SCHEDULE)
+        .startIndexValue(START_INDEX)
         .build();
     assertSerialization(test);
   }

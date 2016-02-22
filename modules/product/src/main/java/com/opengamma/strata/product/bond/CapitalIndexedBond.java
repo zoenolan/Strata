@@ -135,6 +135,13 @@ public final class CapitalIndexedBond
    */
   @PropertyDefinition(validate = "notNull")
   private final YieldConvention yieldConvention;
+  /**
+   * Start index value. 
+   * <p>
+   * The price index value at the start of the bond. 
+   */
+  @PropertyDefinition(validate = "ArgChecker.notNegativeOrZero")
+  private final double startIndexValue;
 
   //-------------------------------------------------------------------------
   @ImmutablePreBuild
@@ -161,8 +168,6 @@ public final class CapitalIndexedBond
     // coupon payments
     for (int i = 0; i < schedule.size(); i++) {
       SchedulePeriod period = schedule.getPeriod(i);
-      SchedulePeriod modifiedPeriod = SchedulePeriod.of(schedule.getPeriod(0).getStartDate(), period.getEndDate(),
-          schedule.getPeriod(0).getUnadjustedStartDate(), period.getUnadjustedEndDate());
       bondPeriodsBuilder.add(CapitalIndexedBondPaymentPeriod.builder()
           .unadjustedStartDate(period.getUnadjustedStartDate())
           .unadjustedEndDate(period.getUnadjustedEndDate())
@@ -171,7 +176,7 @@ public final class CapitalIndexedBond
           .detachmentDate(exCouponPeriod.adjust(period.getEndDate()))
           .notional(notional)
           .currency(currency)
-          .rateObservation(rateCalculation.createRateObservation(modifiedPeriod))
+          .rateObservation(rateCalculation.createRateObservation(period.getEndDate(), startIndexValue))
           .realCoupon(resolvedGearings.get(i))
           .build());
     }
@@ -224,7 +229,8 @@ public final class CapitalIndexedBond
       DaysAdjustment settlementDateOffset,
       DaysAdjustment exCouponPeriod,
       StandardId legalEntityId,
-      YieldConvention yieldConvention) {
+      YieldConvention yieldConvention,
+      double startIndexValue) {
     JodaBeanUtils.notNull(currency, "currency");
     ArgChecker.notNegative(notional, "notional");
     JodaBeanUtils.notNull(dayCount, "dayCount");
@@ -234,6 +240,7 @@ public final class CapitalIndexedBond
     JodaBeanUtils.notNull(exCouponPeriod, "exCouponPeriod");
     JodaBeanUtils.notNull(legalEntityId, "legalEntityId");
     JodaBeanUtils.notNull(yieldConvention, "yieldConvention");
+    ArgChecker.notNegativeOrZero(startIndexValue, "startIndexValue");
     this.currency = currency;
     this.notional = notional;
     this.dayCount = dayCount;
@@ -243,6 +250,7 @@ public final class CapitalIndexedBond
     this.exCouponPeriod = exCouponPeriod;
     this.legalEntityId = legalEntityId;
     this.yieldConvention = yieldConvention;
+    this.startIndexValue = startIndexValue;
     validate();
   }
 
@@ -376,6 +384,17 @@ public final class CapitalIndexedBond
 
   //-----------------------------------------------------------------------
   /**
+   * Gets start index value.
+   * <p>
+   * The price index value at the start of the bond.
+   * @return the value of the property
+   */
+  public double getStartIndexValue() {
+    return startIndexValue;
+  }
+
+  //-----------------------------------------------------------------------
+  /**
    * Returns a builder that allows this bean to be mutated.
    * @return the mutable builder, not null
    */
@@ -398,7 +417,8 @@ public final class CapitalIndexedBond
           JodaBeanUtils.equal(settlementDateOffset, other.settlementDateOffset) &&
           JodaBeanUtils.equal(exCouponPeriod, other.exCouponPeriod) &&
           JodaBeanUtils.equal(legalEntityId, other.legalEntityId) &&
-          JodaBeanUtils.equal(yieldConvention, other.yieldConvention);
+          JodaBeanUtils.equal(yieldConvention, other.yieldConvention) &&
+          JodaBeanUtils.equal(startIndexValue, other.startIndexValue);
     }
     return false;
   }
@@ -415,12 +435,13 @@ public final class CapitalIndexedBond
     hash = hash * 31 + JodaBeanUtils.hashCode(exCouponPeriod);
     hash = hash * 31 + JodaBeanUtils.hashCode(legalEntityId);
     hash = hash * 31 + JodaBeanUtils.hashCode(yieldConvention);
+    hash = hash * 31 + JodaBeanUtils.hashCode(startIndexValue);
     return hash;
   }
 
   @Override
   public String toString() {
-    StringBuilder buf = new StringBuilder(320);
+    StringBuilder buf = new StringBuilder(352);
     buf.append("CapitalIndexedBond{");
     buf.append("currency").append('=').append(currency).append(',').append(' ');
     buf.append("notional").append('=').append(notional).append(',').append(' ');
@@ -430,7 +451,8 @@ public final class CapitalIndexedBond
     buf.append("settlementDateOffset").append('=').append(settlementDateOffset).append(',').append(' ');
     buf.append("exCouponPeriod").append('=').append(exCouponPeriod).append(',').append(' ');
     buf.append("legalEntityId").append('=').append(legalEntityId).append(',').append(' ');
-    buf.append("yieldConvention").append('=').append(JodaBeanUtils.toString(yieldConvention));
+    buf.append("yieldConvention").append('=').append(yieldConvention).append(',').append(' ');
+    buf.append("startIndexValue").append('=').append(JodaBeanUtils.toString(startIndexValue));
     buf.append('}');
     return buf.toString();
   }
@@ -491,6 +513,11 @@ public final class CapitalIndexedBond
     private final MetaProperty<YieldConvention> yieldConvention = DirectMetaProperty.ofImmutable(
         this, "yieldConvention", CapitalIndexedBond.class, YieldConvention.class);
     /**
+     * The meta-property for the {@code startIndexValue} property.
+     */
+    private final MetaProperty<Double> startIndexValue = DirectMetaProperty.ofImmutable(
+        this, "startIndexValue", CapitalIndexedBond.class, Double.TYPE);
+    /**
      * The meta-properties.
      */
     private final Map<String, MetaProperty<?>> metaPropertyMap$ = new DirectMetaPropertyMap(
@@ -503,7 +530,8 @@ public final class CapitalIndexedBond
         "settlementDateOffset",
         "exCouponPeriod",
         "legalEntityId",
-        "yieldConvention");
+        "yieldConvention",
+        "startIndexValue");
 
     /**
      * Restricted constructor.
@@ -532,6 +560,8 @@ public final class CapitalIndexedBond
           return legalEntityId;
         case -1895216418:  // yieldConvention
           return yieldConvention;
+        case -1656407615:  // startIndexValue
+          return startIndexValue;
       }
       return super.metaPropertyGet(propertyName);
     }
@@ -624,6 +654,14 @@ public final class CapitalIndexedBond
       return yieldConvention;
     }
 
+    /**
+     * The meta-property for the {@code startIndexValue} property.
+     * @return the meta-property, not null
+     */
+    public MetaProperty<Double> startIndexValue() {
+      return startIndexValue;
+    }
+
     //-----------------------------------------------------------------------
     @Override
     protected Object propertyGet(Bean bean, String propertyName, boolean quiet) {
@@ -646,6 +684,8 @@ public final class CapitalIndexedBond
           return ((CapitalIndexedBond) bean).getLegalEntityId();
         case -1895216418:  // yieldConvention
           return ((CapitalIndexedBond) bean).getYieldConvention();
+        case -1656407615:  // startIndexValue
+          return ((CapitalIndexedBond) bean).getStartIndexValue();
       }
       return super.propertyGet(bean, propertyName, quiet);
     }
@@ -676,6 +716,7 @@ public final class CapitalIndexedBond
     private DaysAdjustment exCouponPeriod;
     private StandardId legalEntityId;
     private YieldConvention yieldConvention;
+    private double startIndexValue;
 
     /**
      * Restricted constructor.
@@ -697,6 +738,7 @@ public final class CapitalIndexedBond
       this.exCouponPeriod = beanToCopy.getExCouponPeriod();
       this.legalEntityId = beanToCopy.getLegalEntityId();
       this.yieldConvention = beanToCopy.getYieldConvention();
+      this.startIndexValue = beanToCopy.getStartIndexValue();
     }
 
     //-----------------------------------------------------------------------
@@ -721,6 +763,8 @@ public final class CapitalIndexedBond
           return legalEntityId;
         case -1895216418:  // yieldConvention
           return yieldConvention;
+        case -1656407615:  // startIndexValue
+          return startIndexValue;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
@@ -755,6 +799,9 @@ public final class CapitalIndexedBond
           break;
         case -1895216418:  // yieldConvention
           this.yieldConvention = (YieldConvention) newValue;
+          break;
+        case -1656407615:  // startIndexValue
+          this.startIndexValue = (Double) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -798,7 +845,8 @@ public final class CapitalIndexedBond
           settlementDateOffset,
           exCouponPeriod,
           legalEntityId,
-          yieldConvention);
+          yieldConvention,
+          startIndexValue);
     }
 
     //-----------------------------------------------------------------------
@@ -933,10 +981,23 @@ public final class CapitalIndexedBond
       return this;
     }
 
+    /**
+     * Sets start index value.
+     * <p>
+     * The price index value at the start of the bond.
+     * @param startIndexValue  the new value
+     * @return this, for chaining, not null
+     */
+    public Builder startIndexValue(double startIndexValue) {
+      ArgChecker.notNegativeOrZero(startIndexValue, "startIndexValue");
+      this.startIndexValue = startIndexValue;
+      return this;
+    }
+
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(320);
+      StringBuilder buf = new StringBuilder(352);
       buf.append("CapitalIndexedBond.Builder{");
       buf.append("currency").append('=').append(JodaBeanUtils.toString(currency)).append(',').append(' ');
       buf.append("notional").append('=').append(JodaBeanUtils.toString(notional)).append(',').append(' ');
@@ -946,7 +1007,8 @@ public final class CapitalIndexedBond
       buf.append("settlementDateOffset").append('=').append(JodaBeanUtils.toString(settlementDateOffset)).append(',').append(' ');
       buf.append("exCouponPeriod").append('=').append(JodaBeanUtils.toString(exCouponPeriod)).append(',').append(' ');
       buf.append("legalEntityId").append('=').append(JodaBeanUtils.toString(legalEntityId)).append(',').append(' ');
-      buf.append("yieldConvention").append('=').append(JodaBeanUtils.toString(yieldConvention));
+      buf.append("yieldConvention").append('=').append(JodaBeanUtils.toString(yieldConvention)).append(',').append(' ');
+      buf.append("startIndexValue").append('=').append(JodaBeanUtils.toString(startIndexValue));
       buf.append('}');
       return buf.toString();
     }

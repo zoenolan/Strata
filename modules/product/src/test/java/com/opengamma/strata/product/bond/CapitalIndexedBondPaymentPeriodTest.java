@@ -25,7 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.product.rate.FixedRateObservation;
-import com.opengamma.strata.product.rate.InflationMonthlyRateObservation;
+import com.opengamma.strata.product.rate.InflationBondMonthlyRateObservation;
 
 /**
  * Test {@link CapitalIndexedBondPaymentPeriod}.
@@ -37,15 +37,15 @@ public class CapitalIndexedBondPaymentPeriodTest {
   private static final LocalDate END_UNADJ = LocalDate.of(2008, 7, 13);
   private static final LocalDate START = LocalDate.of(2008, 1, 14);
   private static final LocalDate END = LocalDate.of(2008, 7, 14);
-  private static final YearMonth REF_START = YearMonth.of(2007, 10);
   private static final YearMonth REF_END = YearMonth.of(2008, 4);
   private static final double NOTIONAL = 10_000_000d;
   private static final double REAL_COUPON = 0.01d;
   private static final LocalDate DETACHMENT = LocalDate.of(2008, 1, 11);
-  private static final InflationMonthlyRateObservation OBSERVATION_INTERP =
-      InflationMonthlyRateObservation.of(US_CPI_U, REF_START, REF_END);
-  private static final InflationMonthlyRateObservation OBSERVATION_MONTH =
-      InflationMonthlyRateObservation.of(US_CPI_U, REF_START, REF_END);
+  private static final double START_INDEX = 198.475;
+  private static final InflationBondMonthlyRateObservation OBSERVATION_INTERP =
+      InflationBondMonthlyRateObservation.of(US_CPI_U, START_INDEX, REF_END);
+  private static final InflationBondMonthlyRateObservation OBSERVATION_MONTH =
+      InflationBondMonthlyRateObservation.of(US_CPI_U, START_INDEX, REF_END);
 
   public void test_builder_full() {
     CapitalIndexedBondPaymentPeriod test = CapitalIndexedBondPaymentPeriod.builder()
@@ -183,7 +183,7 @@ public class CapitalIndexedBondPaymentPeriodTest {
         .notional(5.0e6)
         .startDate(LocalDate.of(2008, 1, 15))
         .endDate(LocalDate.of(2008, 7, 15))
-        .rateObservation(InflationMonthlyRateObservation.of(GB_RPI, REF_START, REF_END))
+        .rateObservation(InflationBondMonthlyRateObservation.of(GB_RPI, 155.32, REF_END))
         .realCoupon(1d)
         .build();
     coverBeanEquals(test1, test2);
