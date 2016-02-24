@@ -30,8 +30,8 @@ import com.opengamma.strata.product.bond.CapitalIndexedBond;
 import com.opengamma.strata.product.bond.CapitalIndexedBondPaymentPeriod;
 import com.opengamma.strata.product.bond.ExpandedCapitalIndexedBond;
 import com.opengamma.strata.product.bond.YieldConvention;
-import com.opengamma.strata.product.rate.InflationBondInterpolatedRateObservation;
-import com.opengamma.strata.product.rate.InflationBondMonthlyRateObservation;
+import com.opengamma.strata.product.rate.InflationEndInterpolatedRateObservation;
+import com.opengamma.strata.product.rate.InflationEndMonthRateObservation;
 import com.opengamma.strata.product.rate.RateObservation;
 
 public class DiscountingCapitalIndexedBondProductPricer {
@@ -233,10 +233,10 @@ public class DiscountingCapitalIndexedBondProductPricer {
       double indexRatio = ts.getLatestValue() / product.getStartIndexValue();
       YearMonth paymentMonth2 = YearMonth.from(expanded.getPeriodicPayments().get(couponIndex + 1).getPaymentDate());
       YearMonth endFixingMonth2 = null;
-      if (obs2 instanceof InflationBondInterpolatedRateObservation) {
-        endFixingMonth2 = ((InflationBondInterpolatedRateObservation) obs2).getReferenceEndInterpolationMonth();
-      } else if (obs2 instanceof InflationBondMonthlyRateObservation) {
-        endFixingMonth2 = ((InflationBondMonthlyRateObservation) obs2).getReferenceEndMonth();
+      if (obs2 instanceof InflationEndInterpolatedRateObservation) {
+        endFixingMonth2 = ((InflationEndInterpolatedRateObservation) obs2).getReferenceEndInterpolationMonth();
+      } else if (obs2 instanceof InflationEndMonthRateObservation) {
+        endFixingMonth2 = ((InflationEndMonthRateObservation) obs2).getReferenceEndMonth();
       } else {
         throw new IllegalArgumentException("The rate observation " + obs2.toString() + " is not supported.");
       }
@@ -659,7 +659,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
         ratesProvider.getValuationDate() : settlementDate;
     RateObservation modifiedObservation =
         product.getRateCalculation().createRateObservation(endReferenceDate, product.getStartIndexValue());
-    return periodPricer.getRateObservationFn().rate(
+    return 1d + periodPricer.getRateObservationFn().rate(
         modifiedObservation,
         product.getPeriodicSchedule().getStartDate(),
         product.getPeriodicSchedule().getEndDate(),

@@ -32,8 +32,8 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.collect.ArgChecker;
-import com.opengamma.strata.product.rate.InflationBondInterpolatedRateObservation;
-import com.opengamma.strata.product.rate.InflationBondMonthlyRateObservation;
+import com.opengamma.strata.product.rate.InflationEndInterpolatedRateObservation;
+import com.opengamma.strata.product.rate.InflationEndMonthRateObservation;
 import com.opengamma.strata.product.rate.InflationInterpolatedRateObservation;
 import com.opengamma.strata.product.rate.InflationMonthlyRateObservation;
 import com.opengamma.strata.product.rate.RateObservation;
@@ -123,8 +123,8 @@ public final class CapitalIndexedBondPaymentPeriod
    * The rate to be observed.
    * <p>
    * The value of the period is based on this rate.
-   * This must be inflation rate observation, i.e., an instance of {@link InflationInterpolatedRateObservation} or 
-   * {@link InflationMonthlyRateObservation}.
+   * This must be inflation rate observation, i.e., an instance of {@link InflationEndInterpolatedRateObservation} or 
+   * {@link InflationEndMonthRateObservation}.
    */
   @PropertyDefinition(validate = "notNull")
   private final RateObservation rateObservation;
@@ -154,8 +154,8 @@ public final class CapitalIndexedBondPaymentPeriod
     ArgChecker.inOrderNotEqual(
         this.unadjustedStartDate, this.unadjustedEndDate, "unadjustedStartDate", "unadjustedEndDate");
     ArgChecker.inOrderOrEqual(this.detachmentDate, this.endDate, "detachmentDate", "endDate");
-    ArgChecker.isTrue(rateObservation instanceof InflationBondInterpolatedRateObservation ||
-        rateObservation instanceof InflationBondMonthlyRateObservation,
+    ArgChecker.isTrue(rateObservation instanceof InflationEndInterpolatedRateObservation ||
+        rateObservation instanceof InflationEndMonthRateObservation,
         "rateObservation must be inflation bond rate observation");
   }
 
@@ -351,8 +351,8 @@ public final class CapitalIndexedBondPaymentPeriod
    * Gets the rate to be observed.
    * <p>
    * The value of the period is based on this rate.
-   * This must be inflation rate observation, i.e., an instance of {@link InflationInterpolatedRateObservation} or
-   * {@link InflationMonthlyRateObservation}.
+   * This must be inflation rate observation, i.e., an instance of {@link InflationEndInterpolatedRateObservation} or
+   * {@link InflationEndMonthRateObservation}.
    * @return the value of the property, not null
    */
   public RateObservation getRateObservation() {
@@ -906,8 +906,8 @@ public final class CapitalIndexedBondPaymentPeriod
      * Sets the rate to be observed.
      * <p>
      * The value of the period is based on this rate.
-     * This must be inflation rate observation, i.e., an instance of {@link InflationInterpolatedRateObservation} or
-     * {@link InflationMonthlyRateObservation}.
+     * This must be inflation rate observation, i.e., an instance of {@link InflationEndInterpolatedRateObservation} or
+     * {@link InflationEndMonthRateObservation}.
      * @param rateObservation  the new value, not null
      * @return this, for chaining, not null
      */

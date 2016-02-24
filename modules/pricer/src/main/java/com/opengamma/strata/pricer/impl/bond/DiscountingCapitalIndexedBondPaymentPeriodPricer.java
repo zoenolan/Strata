@@ -74,7 +74,7 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     }
     double rate = rateObservationFn.rate(
         period.getRateObservation(), period.getStartDate(), period.getEndDate(), ratesProvider);
-    return period.getNotional() * period.getRealCoupon() * rate;
+    return period.getNotional() * period.getRealCoupon() * (rate + 1d);
   }
 
   //-------------------------------------------------------------------------
@@ -93,7 +93,7 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     double df = issuerDiscountFactors.discountFactor(period.getPaymentDate());
     PointSensitivityBuilder dfSensi = issuerDiscountFactors.zeroRatePointSensitivity(period.getPaymentDate());
     double factor = period.getNotional() * period.getRealCoupon();
-    return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy(rate * factor));
+    return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy((rate + 1d) * factor));
   }
 
   public PointSensitivityBuilder presentValueSensitivityWithZSpread(
@@ -118,7 +118,7 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     IssuerCurveZeroRateSensitivity dfSensi =
         IssuerCurveZeroRateSensitivity.of(zeroSensi, issuerDiscountFactors.getLegalEntityGroup());
     double factor = period.getNotional() * period.getRealCoupon();
-    return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy(rate * factor));
+    return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy((rate + 1d) * factor));
   }
 
   //-------------------------------------------------------------------------

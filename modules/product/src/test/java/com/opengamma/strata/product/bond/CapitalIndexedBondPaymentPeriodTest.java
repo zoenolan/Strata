@@ -25,7 +25,8 @@ import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.product.rate.FixedRateObservation;
-import com.opengamma.strata.product.rate.InflationBondMonthlyRateObservation;
+import com.opengamma.strata.product.rate.InflationEndInterpolatedRateObservation;
+import com.opengamma.strata.product.rate.InflationEndMonthRateObservation;
 
 /**
  * Test {@link CapitalIndexedBondPaymentPeriod}.
@@ -42,10 +43,10 @@ public class CapitalIndexedBondPaymentPeriodTest {
   private static final double REAL_COUPON = 0.01d;
   private static final LocalDate DETACHMENT = LocalDate.of(2008, 1, 11);
   private static final double START_INDEX = 198.475;
-  private static final InflationBondMonthlyRateObservation OBSERVATION_INTERP =
-      InflationBondMonthlyRateObservation.of(US_CPI_U, START_INDEX, REF_END);
-  private static final InflationBondMonthlyRateObservation OBSERVATION_MONTH =
-      InflationBondMonthlyRateObservation.of(US_CPI_U, START_INDEX, REF_END);
+  private static final InflationEndInterpolatedRateObservation OBSERVATION_INTERP =
+      InflationEndInterpolatedRateObservation.of(US_CPI_U, START_INDEX, REF_END, 0.25);
+  private static final InflationEndMonthRateObservation OBSERVATION_MONTH =
+      InflationEndMonthRateObservation.of(US_CPI_U, START_INDEX, REF_END);
 
   public void test_builder_full() {
     CapitalIndexedBondPaymentPeriod test = CapitalIndexedBondPaymentPeriod.builder()
@@ -183,7 +184,7 @@ public class CapitalIndexedBondPaymentPeriodTest {
         .notional(5.0e6)
         .startDate(LocalDate.of(2008, 1, 15))
         .endDate(LocalDate.of(2008, 7, 15))
-        .rateObservation(InflationBondMonthlyRateObservation.of(GB_RPI, 155.32, REF_END))
+        .rateObservation(InflationEndMonthRateObservation.of(GB_RPI, 155.32, REF_END))
         .realCoupon(1d)
         .build();
     coverBeanEquals(test1, test2);
