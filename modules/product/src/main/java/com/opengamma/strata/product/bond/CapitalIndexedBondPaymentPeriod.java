@@ -34,8 +34,6 @@ import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.product.rate.InflationEndInterpolatedRateObservation;
 import com.opengamma.strata.product.rate.InflationEndMonthRateObservation;
-import com.opengamma.strata.product.rate.InflationInterpolatedRateObservation;
-import com.opengamma.strata.product.rate.InflationMonthlyRateObservation;
 import com.opengamma.strata.product.rate.RateObservation;
 import com.opengamma.strata.product.swap.NotionalPaymentPeriod;
 
@@ -156,7 +154,7 @@ public final class CapitalIndexedBondPaymentPeriod
     ArgChecker.inOrderOrEqual(this.detachmentDate, this.endDate, "detachmentDate", "endDate");
     ArgChecker.isTrue(rateObservation instanceof InflationEndInterpolatedRateObservation ||
         rateObservation instanceof InflationEndMonthRateObservation,
-        "rateObservation must be inflation bond rate observation");
+        "rateObservation must be inflation rate observation");
   }
 
   //-------------------------------------------------------------------------
@@ -167,7 +165,7 @@ public final class CapitalIndexedBondPaymentPeriod
    * 
    * @return the payment period
    */
-  CapitalIndexedBondPaymentPeriod withUnitCoupon() {
+  CapitalIndexedBondPaymentPeriod withUnitCoupon(LocalDate startDate, LocalDate unadjustedStartDate) {
     return new CapitalIndexedBondPaymentPeriod(
         currency,
         notional,

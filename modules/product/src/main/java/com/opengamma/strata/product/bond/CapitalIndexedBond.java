@@ -182,7 +182,8 @@ public final class CapitalIndexedBond
     }
     ImmutableList<CapitalIndexedBondPaymentPeriod> bondPeriods = bondPeriodsBuilder.build();
     // nominal payment
-    CapitalIndexedBondPaymentPeriod nominalPayment = bondPeriods.get(bondPeriods.size() - 1).withUnitCoupon();
+    CapitalIndexedBondPaymentPeriod nominalPayment = bondPeriods.get(bondPeriods.size() - 1)
+        .withUnitCoupon(bondPeriods.get(0).getStartDate(), bondPeriods.get(0).getUnadjustedStartDate());
     return ExpandedCapitalIndexedBond.builder()
         .periodicPayments(ImmutableList.copyOf(bondPeriods))
         .dayCount(dayCount)

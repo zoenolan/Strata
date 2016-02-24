@@ -190,7 +190,8 @@ public class CapitalIndexedBondTest {
           .notional(NOTIONAL)
           .build();
     }
-    CapitalIndexedBondPaymentPeriod nominalExp = periodic[3].withUnitCoupon();
+    CapitalIndexedBondPaymentPeriod nominalExp =
+        periodic[3].withUnitCoupon(periodic[0].getStartDate(), periodic[0].getUnadjustedStartDate());
     ExpandedCapitalIndexedBond expected = ExpandedCapitalIndexedBond.builder()
         .dayCount(ACT_ACT_ICMA)
         .legalEntityId(LEGAL_ENTITY)

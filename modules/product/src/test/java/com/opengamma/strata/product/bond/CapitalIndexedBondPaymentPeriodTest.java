@@ -151,18 +151,21 @@ public class CapitalIndexedBondPaymentPeriodTest {
     ImmutableSet<Index> set = builder.build();
     assertEquals(set.size(), 1);
     assertEquals(set.asList().get(0), US_CPI_U);
+
+    LocalDate bondStart = LocalDate.of(2003, 1, 13);
+    LocalDate bondStartUnadj = LocalDate.of(2003, 1, 12);
     CapitalIndexedBondPaymentPeriod expected = CapitalIndexedBondPaymentPeriod.builder()
         .currency(USD)
         .notional(NOTIONAL)
         .detachmentDate(END)
-        .startDate(START)
+        .startDate(bondStart)
         .endDate(END)
-        .unadjustedStartDate(START_UNADJ)
+        .unadjustedStartDate(bondStartUnadj)
         .unadjustedEndDate(END_UNADJ)
         .rateObservation(OBSERVATION_INTERP)
         .realCoupon(1d)
         .build();
-    assertEquals(test.withUnitCoupon(), expected);
+    assertEquals(test.withUnitCoupon(bondStart, bondStartUnadj), expected);
   }
 
   //-------------------------------------------------------------------------

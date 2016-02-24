@@ -1,6 +1,5 @@
 package com.opengamma.strata.pricer.bond;
 
-import static org.testng.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -667,7 +666,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
   }
 
   private void validate(RatesProvider ratesProvider, LegalEntityDiscountingProvider issuerRatesProvider) {
-    assertTrue(ratesProvider.getValuationDate().isEqual(issuerRatesProvider.getValuationDate()),
+    ArgChecker.isTrue(ratesProvider.getValuationDate().isEqual(issuerRatesProvider.getValuationDate()),
         "the rates providers should be for the same date");
   }
 

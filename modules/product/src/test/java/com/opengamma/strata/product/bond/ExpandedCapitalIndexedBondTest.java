@@ -75,7 +75,8 @@ public class ExpandedCapitalIndexedBondTest {
           .build();
     }
   }
-  private static final CapitalIndexedBondPaymentPeriod NOMINAL = PERIODIC[3].withUnitCoupon();
+  private static final CapitalIndexedBondPaymentPeriod NOMINAL =
+      PERIODIC[3].withUnitCoupon(PERIODIC[0].getStartDate(), PERIODIC[0].getUnadjustedStartDate());
 
   public void test_builder() {
     ExpandedCapitalIndexedBond test = ExpandedCapitalIndexedBond.builder()
@@ -131,7 +132,7 @@ public class ExpandedCapitalIndexedBondTest {
     ExpandedCapitalIndexedBond test2 = ExpandedCapitalIndexedBond.builder()
         .dayCount(NL_365)
         .legalEntityId(StandardId.of("OG-Ticker", "US-Govt1"))
-        .nominalPayment(PERIODIC[1].withUnitCoupon())
+        .nominalPayment(PERIODIC[1].withUnitCoupon(PERIODIC[0].getStartDate(), PERIODIC[0].getUnadjustedStartDate()))
         .periodicPayments(PERIODIC[0], PERIODIC[1])
         .settlementDateOffset(DaysAdjustment.ofBusinessDays(3, GBLO))
         .yieldConvention(INDEX_LINKED_FLOAT)
