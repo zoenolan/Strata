@@ -14,7 +14,11 @@ import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.market.explain.ExplainKey;
 import com.opengamma.strata.market.explain.ExplainMapBuilder;
+import com.opengamma.strata.market.sensitivity.IssuerCurveZeroRateSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
+import com.opengamma.strata.market.sensitivity.ZeroRateSensitivity;
+import com.opengamma.strata.market.value.CompoundedRateType;
+import com.opengamma.strata.market.view.IssuerCurveDiscountFactors;
 import com.opengamma.strata.pricer.rate.RateObservationFn;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.product.bond.CapitalIndexedBondPaymentPeriod;
@@ -42,8 +46,25 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
   }
 
   //-------------------------------------------------------------------------
-  public double presentValue(CapitalIndexedBondPaymentPeriod period, RatesProvider ratesProvider) {
-    double df = ratesProvider.discountFactor(period.getCurrency(), period.getPaymentDate());
+  public double presentValue(
+      CapitalIndexedBondPaymentPeriod period,
+      RatesProvider ratesProvider,
+      IssuerCurveDiscountFactors issuerDiscountFactors) {
+
+    double df = issuerDiscountFactors.discountFactor(period.getPaymentDate());
+    return df * forecastValue(period, ratesProvider);
+  }
+
+  public double presentValueWithZSpread(
+      CapitalIndexedBondPaymentPeriod period,
+      RatesProvider ratesProvider,
+      IssuerCurveDiscountFactors issuerDiscountFactors,
+      double zSpread,
+      CompoundedRateType compoundedRateType,
+      int periodsPerYear) {
+
+    double df = issuerDiscountFactors.getDiscountFactors()
+        .discountFactorWithSpread(period.getPaymentDate(), zSpread, compoundedRateType, periodsPerYear);
     return df * forecastValue(period, ratesProvider);
   }
 
@@ -59,7 +80,8 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
   //-------------------------------------------------------------------------
   public PointSensitivityBuilder presentValueSensitivity(
       CapitalIndexedBondPaymentPeriod period,
-      RatesProvider ratesProvider) {
+      RatesProvider ratesProvider,
+      IssuerCurveDiscountFactors issuerDiscountFactors) {
 
     if (period.getPaymentDate().isBefore(ratesProvider.getValuationDate())) {
       return PointSensitivityBuilder.none(); 
@@ -68,9 +90,33 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
         period.getRateObservation(), period.getStartDate(), period.getEndDate(), ratesProvider);
     PointSensitivityBuilder rateSensi = rateObservationFn.rateSensitivity(
         period.getRateObservation(), period.getStartDate(), period.getEndDate(), ratesProvider);
-    double df = ratesProvider.discountFactor(period.getCurrency(), period.getPaymentDate());
-    PointSensitivityBuilder dfSensi =
-        ratesProvider.discountFactors(period.getCurrency()).zeroRatePointSensitivity(period.getPaymentDate());
+    double df = issuerDiscountFactors.discountFactor(period.getPaymentDate());
+    PointSensitivityBuilder dfSensi = issuerDiscountFactors.zeroRatePointSensitivity(period.getPaymentDate());
+    double factor = period.getNotional() * period.getRealCoupon();
+    return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy(rate * factor));
+  }
+
+  public PointSensitivityBuilder presentValueSensitivityWithZSpread(
+      CapitalIndexedBondPaymentPeriod period,
+      RatesProvider ratesProvider,
+      IssuerCurveDiscountFactors issuerDiscountFactors,
+      double zSpread,
+      CompoundedRateType compoundedRateType,
+      int periodsPerYear) {
+
+    if (period.getPaymentDate().isBefore(ratesProvider.getValuationDate())) {
+      return PointSensitivityBuilder.none();
+    }
+    double rate = rateObservationFn.rate(
+        period.getRateObservation(), period.getStartDate(), period.getEndDate(), ratesProvider);
+    PointSensitivityBuilder rateSensi = rateObservationFn.rateSensitivity(
+        period.getRateObservation(), period.getStartDate(), period.getEndDate(), ratesProvider);
+    double df = issuerDiscountFactors.getDiscountFactors()
+        .discountFactorWithSpread(period.getPaymentDate(), zSpread, compoundedRateType, periodsPerYear);
+    ZeroRateSensitivity zeroSensi = issuerDiscountFactors.getDiscountFactors()
+        .zeroRatePointSensitivityWithSpread(period.getPaymentDate(), zSpread, compoundedRateType, periodsPerYear);
+    IssuerCurveZeroRateSensitivity dfSensi =
+        IssuerCurveZeroRateSensitivity.of(zeroSensi, issuerDiscountFactors.getLegalEntityGroup());
     double factor = period.getNotional() * period.getRealCoupon();
     return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy(rate * factor));
   }
@@ -79,7 +125,8 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
   public void explainPresentValue(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,
-      ExplainMapBuilder builder) {
+      ExplainMapBuilder builder,
+      IssuerCurveDiscountFactors issuerDiscountFactors) {
 
     Currency currency = period.getCurrency();
     LocalDate paymentDate = period.getPaymentDate();
@@ -97,7 +144,39 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     } else {
       builder.put(ExplainKey.DISCOUNT_FACTOR, ratesProvider.discountFactor(currency, paymentDate));
       builder.put(ExplainKey.FORECAST_VALUE, CurrencyAmount.of(currency, forecastValue(period, ratesProvider)));
-      builder.put(ExplainKey.PRESENT_VALUE, CurrencyAmount.of(currency, presentValue(period, ratesProvider)));
+      builder.put(ExplainKey.PRESENT_VALUE,
+          CurrencyAmount.of(currency, presentValue(period, ratesProvider, issuerDiscountFactors)));
     }
   }
+
+  public void explainPresentValueWithSpread(
+      CapitalIndexedBondPaymentPeriod period,
+      RatesProvider ratesProvider,
+      ExplainMapBuilder builder,
+      IssuerCurveDiscountFactors issuerDiscountFactors,
+      double zSpread,
+      CompoundedRateType compoundedRateType,
+      int periodsPerYear) {
+
+    Currency currency = period.getCurrency();
+    LocalDate paymentDate = period.getPaymentDate();
+    builder.put(ExplainKey.ENTRY_TYPE, "CapitalIndexedBondPaymentPeriod");
+    builder.put(ExplainKey.PAYMENT_DATE, paymentDate);
+    builder.put(ExplainKey.PAYMENT_CURRENCY, currency);
+    builder.put(ExplainKey.START_DATE, period.getStartDate());
+    builder.put(ExplainKey.UNADJUSTED_START_DATE, period.getUnadjustedStartDate());
+    builder.put(ExplainKey.END_DATE, period.getEndDate());
+    builder.put(ExplainKey.ACCRUAL_DAYS, (int) DAYS.between(period.getStartDate(), period.getEndDate()));
+    builder.put(ExplainKey.UNADJUSTED_END_DATE, period.getUnadjustedEndDate());
+    if (paymentDate.isBefore(ratesProvider.getValuationDate())) {
+      builder.put(ExplainKey.FORECAST_VALUE, CurrencyAmount.zero(currency));
+      builder.put(ExplainKey.PRESENT_VALUE, CurrencyAmount.zero(currency));
+    } else {
+      builder.put(ExplainKey.DISCOUNT_FACTOR, ratesProvider.discountFactor(currency, paymentDate));
+      builder.put(ExplainKey.FORECAST_VALUE, CurrencyAmount.of(currency, forecastValue(period, ratesProvider)));
+      builder.put(ExplainKey.PRESENT_VALUE, CurrencyAmount.of(currency, presentValueWithZSpread(
+          period, ratesProvider, issuerDiscountFactors, zSpread, compoundedRateType, periodsPerYear)));
+    }
+  }
+
 }

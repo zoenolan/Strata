@@ -177,7 +177,7 @@ public final class CapitalIndexedBondPaymentPeriod
         unadjustedStartDate,
         unadjustedEndDate,
         endDate,
-        rateObservation);
+        rateObservation); // TODO change start as well.
   }
 
   //-------------------------------------------------------------------------
