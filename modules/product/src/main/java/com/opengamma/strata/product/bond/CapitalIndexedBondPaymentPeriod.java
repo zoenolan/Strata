@@ -57,12 +57,12 @@ public final class CapitalIndexedBondPaymentPeriod
   @PropertyDefinition(validate = "notNull", overrideGet = true)
   private final Currency currency;
   /**
-   * The notional amount, must be positive. 
+   * The notional amount, must be non-zero.
    * <p>
    * The notional amount applicable during the period.
    * The currency of the notional is specified by {@code currency}.
    */
-  @PropertyDefinition(validate = "ArgChecker.notNegative")
+  @PropertyDefinition
   private final double notional;
   /**
    * The rate of real coupon. 
@@ -140,7 +140,7 @@ public final class CapitalIndexedBondPaymentPeriod
       LocalDate detachmentDate,
       RateObservation rateObservation) {
     this.currency = ArgChecker.notNull(currency, "currency");
-    this.notional = ArgChecker.notNegative(notional, "notional");
+    this.notional = ArgChecker.notZero(notional, 0d, "notional");
     this.realCoupon = ArgChecker.notNegative(realCoupon, "realCoupon");
     this.startDate = ArgChecker.notNull(startDate, "startDate");
     this.endDate = ArgChecker.notNull(endDate, "endDate");
@@ -175,7 +175,7 @@ public final class CapitalIndexedBondPaymentPeriod
         unadjustedStartDate,
         unadjustedEndDate,
         endDate,
-        rateObservation); // TODO change start as well.
+        rateObservation);
   }
 
   //-------------------------------------------------------------------------
@@ -255,7 +255,7 @@ public final class CapitalIndexedBondPaymentPeriod
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the notional amount, must be positive.
+   * Gets the notional amount, must be non-zero.
    * <p>
    * The notional amount applicable during the period.
    * The currency of the notional is specified by {@code currency}.
@@ -799,7 +799,7 @@ public final class CapitalIndexedBondPaymentPeriod
     }
 
     /**
-     * Sets the notional amount, must be positive.
+     * Sets the notional amount, must be non-zero.
      * <p>
      * The notional amount applicable during the period.
      * The currency of the notional is specified by {@code currency}.
@@ -807,7 +807,6 @@ public final class CapitalIndexedBondPaymentPeriod
      * @return this, for chaining, not null
      */
     public Builder notional(double notional) {
-      ArgChecker.notNegative(notional, "notional");
       this.notional = notional;
       return this;
     }

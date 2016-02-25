@@ -24,6 +24,11 @@ import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.product.bond.CapitalIndexedBondPaymentPeriod;
 import com.opengamma.strata.product.rate.RateObservation;
 
+/**
+ * Pricer implementation for bond payment periods based on a capital indexed coupon.
+ * <p>
+ * This pricer performs discounting of {@link CapitalIndexedBondPaymentPeriod}.
+ */
 public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
 
   /**
@@ -31,21 +36,41 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
    */
   public static final DiscountingCapitalIndexedBondPaymentPeriodPricer DEFAULT =
       new DiscountingCapitalIndexedBondPaymentPeriodPricer(RateObservationFn.instance());
-
   /**
    * Rate observation.
    */
   private final RateObservationFn<RateObservation> rateObservationFn;
 
+  /**
+   * Creates an instance. 
+   * 
+   * @param rateObservationFn  the rate observation function
+   */
   public DiscountingCapitalIndexedBondPaymentPeriodPricer(RateObservationFn<RateObservation> rateObservationFn) {
     this.rateObservationFn = ArgChecker.notNull(rateObservationFn, "rateObservationFn");
   }
 
+  /**
+   * Obtains the rate observation function. 
+   * 
+   * @return the rate observation function
+   */
   public RateObservationFn<RateObservation> getRateObservationFn() {
     return rateObservationFn;
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value of a single payment period.
+   * <p>
+   * This returns the value of the period with discounting.
+   * If the payment date of the period is in the past, zero is returned.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @param issuerDiscountFactors  the discount factor provider
+   * @return the present value of the period
+   */
   public double presentValue(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,
@@ -55,6 +80,20 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     return df * forecastValue(period, ratesProvider);
   }
 
+  /**
+   * Calculates the present value of a single payment period with z-spread.
+   * <p>
+   * This returns the value of the period with discounting.
+   * If the payment date of the period is in the past, zero is returned.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @param issuerDiscountFactors  the discount factor provider
+   * @param zSpread  the z-spread
+   * @param compoundedRateType  the compounded rate type
+   * @param periodsPerYear  the number of periods per year
+   * @return the present value of the period
+   */
   public double presentValueWithZSpread(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,
@@ -68,6 +107,13 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     return df * forecastValue(period, ratesProvider);
   }
 
+  /**
+   * Calculates the forecast value of a single payment period.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @return the forecast value of the period 
+   */
   public double forecastValue(CapitalIndexedBondPaymentPeriod period, RatesProvider ratesProvider) {
     if (period.getPaymentDate().isBefore(ratesProvider.getValuationDate())) {
       return 0d;
@@ -78,6 +124,17 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value sensitivity of a single payment period.
+   * <p>
+   * The present value sensitivity of the period is the sensitivity of the present value to
+   * the underlying curves.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @param issuerDiscountFactors  the discount factor provider
+   * @return the present value curve sensitivity of the period
+   */
   public PointSensitivityBuilder presentValueSensitivity(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,
@@ -96,6 +153,20 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy((rate + 1d) * factor));
   }
 
+  /**
+   * Calculates the present value sensitivity of a single payment period with z-spread.
+   * <p>
+   * The present value sensitivity of the period is the sensitivity of the present value to
+   * the underlying curves.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @param issuerDiscountFactors  the discount factor provider
+   * @param zSpread  the z-spread
+   * @param compoundedRateType  the compounded rate type
+   * @param periodsPerYear  the number of periods per year
+   * @return the present value curve sensitivity of the period
+   */
   public PointSensitivityBuilder presentValueSensitivityWithZSpread(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,
@@ -121,7 +192,39 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     return rateSensi.multipliedBy(df * factor).combinedWith(dfSensi.multipliedBy((rate + 1d) * factor));
   }
 
+  /**
+   * Calculates the forecast value sensitivity of a single payment period.
+   * <p>
+   * The forecast value sensitivity of the period is the sensitivity of the present value to
+   * the underlying curves.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @return the forecast value sensitivity of the period 
+   */
+  public PointSensitivityBuilder forecastValueSensitivity(
+      CapitalIndexedBondPaymentPeriod period,
+      RatesProvider ratesProvider) {
+
+    if (period.getPaymentDate().isBefore(ratesProvider.getValuationDate())) {
+      return PointSensitivityBuilder.none();
+    }
+    PointSensitivityBuilder rateSensi = rateObservationFn.rateSensitivity(
+        period.getRateObservation(), period.getStartDate(), period.getEndDate(), ratesProvider);
+    return rateSensi.multipliedBy(period.getNotional() * period.getRealCoupon());
+  }
+
   //-------------------------------------------------------------------------
+  /**
+   * Explains the present value of a single payment period.
+   * <p>
+   * This adds information to the {@link ExplainMapBuilder} to aid understanding of the calculation.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @param issuerDiscountFactors  the discount factor provider
+   * @param builder  the builder to populate
+   */
   public void explainPresentValue(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,
@@ -149,6 +252,19 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricer {
     }
   }
 
+  /**
+   * Explains the present value of a single payment period with z-spread.
+   * <p>
+   * This adds information to the {@link ExplainMapBuilder} to aid understanding of the calculation.
+   * 
+   * @param period  the period to price
+   * @param ratesProvider  the rates provider, used to determine price index values
+   * @param issuerDiscountFactors  the discount factor provider
+   * @param zSpread  the z-spread
+   * @param compoundedRateType  the compounded rate type
+   * @param periodsPerYear  the number of periods per year
+   * @param builder  the builder to populate
+   */
   public void explainPresentValueWithSpread(
       CapitalIndexedBondPaymentPeriod period,
       RatesProvider ratesProvider,

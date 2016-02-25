@@ -5,7 +5,6 @@
  */
 package com.opengamma.strata.product.bond;
 
-import static com.opengamma.strata.basics.currency.Currency.EUR;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_ACT_ICMA;
 import static com.opengamma.strata.basics.date.HolidayCalendars.USNY;
@@ -23,8 +22,6 @@ import java.time.Period;
 import org.testng.annotations.Test;
 
 import com.google.common.reflect.TypeToken;
-import com.opengamma.strata.basics.currency.CurrencyAmount;
-import com.opengamma.strata.basics.currency.Payment;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.BusinessDayConventions;
 import com.opengamma.strata.basics.date.DaysAdjustment;
@@ -83,9 +80,19 @@ public class CapitalIndexedBondTradeTest {
   private static final SecurityLink<CapitalIndexedBond> LINK_RESOLVABLE = 
       SecurityLink.resolvable(SECURITY_ID, CapitalIndexedBond.class);
   private static final SecurityLink<CapitalIndexedBond> LINK_RESOLVED = SecurityLink.resolved(SECURITY);
-  private static final LocalDate TRADE = LocalDate.of(2006, 1, 8);
-  private static final Payment UPFRONT = Payment.of(USD, NOTIONAL, TRADE);
-  private static final TradeInfo TRADE_INFO = TradeInfo.builder().tradeDate(TRADE).build();
+  private static final LocalDate TRADE = LocalDate.of(2007, 1, 8);
+  private static final LocalDate SETTLEMENT_DATE = SCHEDULE_ADJ.adjust(TRADE);
+  private static final CapitalIndexedBondPaymentPeriod SETTLEMENT = CapitalIndexedBondPaymentPeriod.builder()
+      .startDate(SCHEDULE_ADJ.adjust(START))
+      .unadjustedStartDate(START)
+      .endDate(SETTLEMENT_DATE)
+      .currency(USD)
+      .rateObservation(RATE_CALC.createRateObservation(SETTLEMENT_DATE, START_INDEX))
+      .notional(-NOTIONAL * QUANTITY)
+      .realCoupon(1d)
+      .build();
+  private static final TradeInfo TRADE_INFO =
+      TradeInfo.builder().tradeDate(TRADE).settlementDate(SETTLEMENT_DATE).build();
 
   private static final LinkResolver RESOLVER = new LinkResolver() {
     @SuppressWarnings("unchecked")
@@ -102,14 +109,14 @@ public class CapitalIndexedBondTradeTest {
         .securityLink(LINK_RESOLVED)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     assertEquals(test.getProduct(), PRODUCT);
     assertEquals(test.getTradeInfo(), TRADE_INFO);
     assertEquals(test.getQuantity(), QUANTITY);
     assertEquals(test.getSecurity(), SECURITY);
     assertEquals(test.getSecurityLink(), LINK_RESOLVED);
-    assertEquals(test.getPayment(), UPFRONT);
+    assertEquals(test.getSettlement(), SETTLEMENT);
   }
 
   public void test_builder_resolvable() {
@@ -117,7 +124,7 @@ public class CapitalIndexedBondTradeTest {
         .securityLink(LINK_RESOLVABLE)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     assertEquals(test.getTradeInfo(), TRADE_INFO);
     assertEquals(test.getQuantity(), QUANTITY);
@@ -126,13 +133,23 @@ public class CapitalIndexedBondTradeTest {
     assertThrows(() -> test.getProduct(), IllegalStateException.class);
   }
 
+  public void test_of() {
+    CapitalIndexedBondTrade test = CapitalIndexedBondTrade.of(LINK_RESOLVED, TRADE_INFO, QUANTITY);
+    assertEquals(test.getProduct(), PRODUCT);
+    assertEquals(test.getTradeInfo(), TRADE_INFO);
+    assertEquals(test.getQuantity(), QUANTITY);
+    assertEquals(test.getSecurity(), SECURITY);
+    assertEquals(test.getSecurityLink(), LINK_RESOLVED);
+    assertEquals(test.getSettlement(), SETTLEMENT);
+  }
+
   //-------------------------------------------------------------------------
   public void test_resolveLinks_resolved() {
     CapitalIndexedBondTrade base = CapitalIndexedBondTrade.builder()
         .securityLink(LINK_RESOLVED)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     assertEquals(base.resolveLinks(RESOLVER), base);
   }
@@ -142,13 +159,13 @@ public class CapitalIndexedBondTradeTest {
         .securityLink(LINK_RESOLVABLE)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     CapitalIndexedBondTrade expected = CapitalIndexedBondTrade.builder()
         .securityLink(LINK_RESOLVED)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     assertEquals(base.resolveLinks(RESOLVER), expected);
   }
@@ -156,10 +173,10 @@ public class CapitalIndexedBondTradeTest {
   //-------------------------------------------------------------------------
   public void coverage() {
     CapitalIndexedBondTrade test1 = CapitalIndexedBondTrade.builder()
-        .securityLink(LINK_RESOLVED)
+        .securityLink(LINK_RESOLVABLE)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     coverImmutableBean(test1);
     CapitalIndexedBondTrade test2 = CapitalIndexedBondTrade.builder()
@@ -167,7 +184,15 @@ public class CapitalIndexedBondTradeTest {
             .standardId(StandardId.of("Ticker", "GOV1-BND1"))
             .build()))
         .quantity(100L)
-        .payment(Payment.of(CurrencyAmount.of(EUR, -NOTIONAL * QUANTITY * 0.99), TRADE))
+        .settlement(
+            CapitalIndexedBondPaymentPeriod.builder()
+                .startDate(START)
+                .endDate(START.plusDays(7))
+                .currency(USD)
+                .rateObservation(RATE_CALC.createRateObservation(START.plusDays(7), START_INDEX))
+                .notional(-1.e10)
+                .build())
+        .tradeInfo(TradeInfo.builder().settlementDate(START.plusDays(7)).build())
         .build();
     coverBeanEquals(test1, test2);
   }
@@ -177,7 +202,7 @@ public class CapitalIndexedBondTradeTest {
         .securityLink(LINK_RESOLVED)
         .tradeInfo(TRADE_INFO)
         .quantity(QUANTITY)
-        .payment(UPFRONT)
+        .settlement(SETTLEMENT)
         .build();
     assertSerialization(test);
   }
