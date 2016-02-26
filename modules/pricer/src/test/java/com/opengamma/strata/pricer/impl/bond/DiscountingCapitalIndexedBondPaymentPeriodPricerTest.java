@@ -6,7 +6,6 @@
 package com.opengamma.strata.pricer.impl.bond;
 
 import static com.opengamma.strata.basics.currency.Currency.USD;
-import static com.opengamma.strata.basics.date.DayCounts.ACT_ACT_ISDA;
 import static com.opengamma.strata.basics.index.PriceIndices.US_CPI_U;
 import static com.opengamma.strata.market.value.CompoundedRateType.CONTINUOUS;
 import static com.opengamma.strata.market.value.CompoundedRateType.PERIODIC;
@@ -19,34 +18,16 @@ import java.time.YearMonth;
 
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableMap;
-import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
-import com.opengamma.strata.basics.currency.FxMatrix;
-import com.opengamma.strata.basics.index.PriceIndex;
-import com.opengamma.strata.collect.array.DoubleArray;
-import com.opengamma.strata.collect.id.StandardId;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
-import com.opengamma.strata.collect.tuple.Pair;
 import com.opengamma.strata.market.curve.CurveCurrencyParameterSensitivities;
-import com.opengamma.strata.market.curve.CurveMetadata;
-import com.opengamma.strata.market.curve.CurveName;
-import com.opengamma.strata.market.curve.Curves;
-import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.explain.ExplainKey;
 import com.opengamma.strata.market.explain.ExplainMap;
 import com.opengamma.strata.market.explain.ExplainMapBuilder;
-import com.opengamma.strata.market.interpolator.CurveInterpolator;
-import com.opengamma.strata.market.interpolator.CurveInterpolators;
 import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
-import com.opengamma.strata.market.value.BondGroup;
 import com.opengamma.strata.market.value.CompoundedRateType;
-import com.opengamma.strata.market.value.LegalEntityGroup;
-import com.opengamma.strata.market.view.DiscountFactors;
-import com.opengamma.strata.market.view.ForwardPriceIndexValues;
 import com.opengamma.strata.market.view.IssuerCurveDiscountFactors;
-import com.opengamma.strata.market.view.PriceIndexValues;
-import com.opengamma.strata.market.view.ZeroRateDiscountFactors;
+import com.opengamma.strata.pricer.bond.CapitalIndexedBondCurveDataSet;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.LegalEntityDiscountingProvider;
 import com.opengamma.strata.pricer.rate.RateObservationFn;
@@ -60,11 +41,7 @@ import com.opengamma.strata.product.rate.InflationEndMonthRateObservation;
  */
 @Test
 public class DiscountingCapitalIndexedBondPaymentPeriodPricerTest {
-  private static final LocalDate VALUATION_BEFORE_START = LocalDate.of(2007, 10, 9);
-  private static final LocalDate VALUATION_ON_FIX = LocalDate.of(2008, 4, 29);
-  private static final LocalDate VALUATION_AFTER_FIX = LocalDate.of(2008, 5, 20);
-  private static final LocalDate VALUATION_AFTER_PAY = LocalDate.of(2008, 8, 9);
-
+  // periods
   private static final LocalDate START_UNADJ = LocalDate.of(2008, 1, 13);
   private static final LocalDate END_UNADJ = LocalDate.of(2008, 7, 13);
   private static final LocalDate START = LocalDate.of(2008, 1, 14);
@@ -101,57 +78,27 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricerTest {
       .rateObservation(OBSERVATION_MONTH)
       .realCoupon(REAL_COUPON)
       .build();
-
-  private static final StandardId ISSUER_ID = StandardId.of("OG-Ticker", "GOVT");
-  private static final LegalEntityGroup GROUP_ISSUER = LegalEntityGroup.of("GOVT");
-  private static final BondGroup GROUP_REPO = BondGroup.of("GOVT BONDS");
-  private static final CurveInterpolator INTERPOLATOR = CurveInterpolators.LINEAR;
-  private static final CurveName ISSUER_CURVE_NAME = CurveName.of("issuerCurve");
-  private static final CurveName REPO_CURVE_NAME = CurveName.of("repoCurve");
-
-  private static final InterpolatedNodalCurve ISSUER_CURVE;
-  private static final InterpolatedNodalCurve REPO_CURVE;
-  private static final InterpolatedNodalCurve CPI_CURVE;
-  static {
-    DoubleArray timeIssuer = DoubleArray.of(0.2493150684931507, 0.4986301369863014, 0.9397260273972603,
-        1.9760386256456322, 4.975342465753425, 9.850355565536344);
-    DoubleArray rateIssuer = DoubleArray.of(6.796425420368682E-5, 3.114315257821455E-4, 7.126179601599612E-4,
-        0.04946562985220742, 0.01404542200399637, 0.022260846895257275);
-    CurveMetadata metaIssuer = Curves.zeroRates(ISSUER_CURVE_NAME, ACT_ACT_ISDA);
-    ISSUER_CURVE = InterpolatedNodalCurve.of(
-        metaIssuer, timeIssuer, rateIssuer, INTERPOLATOR);
-    DoubleArray timeRepo = DoubleArray.of(0.0027397260273972603, 0.0136986301369863, 0.1095890410958904,
-        0.18904109589041096, 0.27123287671232876, 0.5178082191780822, 0.7671232876712328, 1.0191780821917809,
-        2.025218953514485, 3.0246575342465754, 4.021917808219178, 5.019178082191781, 6.019754472640168,
-        7.024657534246575, 8.024657534246575, 9.024657534246575, 10.019754472640168);
-    DoubleArray rateRepo = DoubleArray.of(0.0016222186172986138, 0.001622209965572477, 7.547616096755544E-4,
-        9.003947315389025E-4, 9.833562990057003E-4, 9.300905368344651E-4, 0.0010774349342544426, 0.001209299356175582,
-        0.003243498783874946, 0.007148138535707508, 0.011417234937364525, 0.015484713638367467, 0.01894872475170524,
-        0.02177798040124286, 0.024146976832379798, 0.02610320121432829, 0.027814843351943817);
-    CurveMetadata metaRepo = Curves.zeroRates(REPO_CURVE_NAME, ACT_ACT_ISDA);
-    REPO_CURVE = InterpolatedNodalCurve.of(metaRepo, timeRepo, rateRepo, INTERPOLATOR);
-    DoubleArray timeCpi = DoubleArray.of(10, 22, 34, 46, 58, 70, 82, 94, 106, 118, 142, 178, 238, 298, 358);
-    DoubleArray valueCpi = DoubleArray.of(242.88404516129032, 248.03712245417105, 252.98128118335094,
-        258.0416354687366, 263.20242369585515, 268.4653023378886, 273.83617795725064, 279.3124974961296,
-        284.8987721100803, 290.5954768446179, 302.3336095056465, 320.8351638061777, 354.2203489141063,
-        391.08797576744865, 431.7913437911175);
-    CurveMetadata metaCpi = Curves.prices("cpiCurve");
-    CPI_CURVE = InterpolatedNodalCurve.of(metaCpi, timeCpi, valueCpi, INTERPOLATOR);
-  }
-
-  private static final IssuerCurveDiscountFactors ICDF_BEFORE_START = getIssuerCurveDiscountFactors(VALUATION_BEFORE_START);
-  private static final IssuerCurveDiscountFactors ICDF_ON_FIX = getIssuerCurveDiscountFactors(VALUATION_ON_FIX);
-  private static final IssuerCurveDiscountFactors ICDF_AFTER_FIX = getIssuerCurveDiscountFactors(VALUATION_AFTER_FIX);
-  private static final IssuerCurveDiscountFactors ICDF_AFTER_PAY = getIssuerCurveDiscountFactors(VALUATION_AFTER_PAY);
-
-  private static final LegalEntityDiscountingProvider LEDP_BEFORE_START = getLegalEntityDiscountingProvider(VALUATION_BEFORE_START);
-  private static final LegalEntityDiscountingProvider LEDP_ON_FIX = getLegalEntityDiscountingProvider(VALUATION_ON_FIX);
-  private static final LegalEntityDiscountingProvider LEDP_AFTER_FIX = getLegalEntityDiscountingProvider(VALUATION_AFTER_FIX);
-  private static final LegalEntityDiscountingProvider LEDP_AFTER_PAY = getLegalEntityDiscountingProvider(VALUATION_AFTER_PAY);
-
+  // rates providers
+  private static final LocalDate VALUATION_BEFORE_START = LocalDate.of(2007, 10, 9);
+  private static final LocalDate VALUATION_ON_FIX = LocalDate.of(2008, 4, 29);
+  private static final LocalDate VALUATION_AFTER_FIX = LocalDate.of(2008, 5, 20);
+  private static final LocalDate VALUATION_AFTER_PAY = LocalDate.of(2008, 8, 9);
   private static final double Z_SPREAD = 0.005;
   private static final int PERIOD_PER_YEAR = 4;
-
+  private static final IssuerCurveDiscountFactors ICDF_BEFORE_START =
+      CapitalIndexedBondCurveDataSet.getIssuerCurveDiscountFactors(VALUATION_BEFORE_START);
+  private static final IssuerCurveDiscountFactors ICDF_ON_FIX =
+      CapitalIndexedBondCurveDataSet.getIssuerCurveDiscountFactors(VALUATION_ON_FIX);
+  private static final IssuerCurveDiscountFactors ICDF_AFTER_FIX =
+      CapitalIndexedBondCurveDataSet.getIssuerCurveDiscountFactors(VALUATION_AFTER_FIX);
+  private static final IssuerCurveDiscountFactors ICDF_AFTER_PAY =
+      CapitalIndexedBondCurveDataSet.getIssuerCurveDiscountFactors(VALUATION_AFTER_PAY);
+  private static final LegalEntityDiscountingProvider LEDP_BEFORE_START =
+      CapitalIndexedBondCurveDataSet.getLegalEntityDiscountingProvider(VALUATION_BEFORE_START);
+  private static final LegalEntityDiscountingProvider LEDP_ON_FIX =
+      CapitalIndexedBondCurveDataSet.getLegalEntityDiscountingProvider(VALUATION_ON_FIX);
+  private static final LegalEntityDiscountingProvider LEDP_AFTER_FIX =
+      CapitalIndexedBondCurveDataSet.getLegalEntityDiscountingProvider(VALUATION_AFTER_FIX);
   private static final LocalDateDoubleTimeSeries TIME_SERIES_OLD =
       LocalDateDoubleTimeSeries.of(LocalDate.of(2007, 9, 30), 200.0);
   private static final double INDEX_END_1 = 210.5;
@@ -162,11 +109,15 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricerTest {
       .put(REF_END.atEndOfMonth(), INDEX_END_1)
       .put(REF_END.plusMonths(1).atEndOfMonth(), INDEX_END_2)
       .build();
-  private static final ImmutableRatesProvider IRP_BEFORE_START = getRatesProvider(VALUATION_BEFORE_START, TIME_SERIES_OLD);
-  private static final ImmutableRatesProvider IRP_ON_FIX = getRatesProvider(VALUATION_ON_FIX, TIME_SERIES_ONE);
-  private static final ImmutableRatesProvider IRP_AFTER_FIX = getRatesProvider(VALUATION_AFTER_FIX, TIME_SERIES_TWO);
-  private static final ImmutableRatesProvider IRP_AFTER_PAY = getRatesProvider(VALUATION_AFTER_PAY, TIME_SERIES_TWO);
-
+  private static final ImmutableRatesProvider IRP_BEFORE_START =
+      CapitalIndexedBondCurveDataSet.getRatesProvider(VALUATION_BEFORE_START, TIME_SERIES_OLD);
+  private static final ImmutableRatesProvider IRP_ON_FIX =
+      CapitalIndexedBondCurveDataSet.getRatesProvider(VALUATION_ON_FIX, TIME_SERIES_ONE);
+  private static final ImmutableRatesProvider IRP_AFTER_FIX =
+      CapitalIndexedBondCurveDataSet.getRatesProvider(VALUATION_AFTER_FIX, TIME_SERIES_TWO);
+  private static final ImmutableRatesProvider IRP_AFTER_PAY =
+      CapitalIndexedBondCurveDataSet.getRatesProvider(VALUATION_AFTER_PAY, TIME_SERIES_TWO);
+  // calculators
   private static final double TOL = 1.0e-13;
   private static final double FD_EPS = 1.0e-6;
   private static final DiscountingCapitalIndexedBondPaymentPeriodPricer PRICER =
@@ -574,12 +525,18 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricerTest {
         issuerRatesProvider,
         p -> CurrencyAmount.of(
             USD,
-            PRICER.presentValue(period, ratesProvider, p.issuerCurveDiscountFactors(ISSUER_ID, USD))));
+            PRICER.presentValue(
+                period,
+                ratesProvider,
+                p.issuerCurveDiscountFactors(CapitalIndexedBondCurveDataSet.getIssuerId(), USD))));
     CurveCurrencyParameterSensitivities sensi2 = FD_CAL.sensitivity(
         ratesProvider,
         p -> CurrencyAmount.of(
             USD,
-            PRICER.presentValue(period, p, issuerRatesProvider.issuerCurveDiscountFactors(ISSUER_ID, USD))));
+            PRICER.presentValue(
+                period,
+                p,
+                issuerRatesProvider.issuerCurveDiscountFactors(CapitalIndexedBondCurveDataSet.getIssuerId(), USD))));
     return sensi1.combinedWith(sensi2);
   }
 
@@ -598,7 +555,7 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricerTest {
             PRICER.presentValueWithZSpread(
                 period,
                 ratesProvider,
-                p.issuerCurveDiscountFactors(ISSUER_ID, USD),
+                p.issuerCurveDiscountFactors(CapitalIndexedBondCurveDataSet.getIssuerId(), USD),
                 zSpread,
                 compoundedRateType,
                 periodsPerYear)));
@@ -609,40 +566,11 @@ public class DiscountingCapitalIndexedBondPaymentPeriodPricerTest {
             PRICER.presentValueWithZSpread(
                 period,
                 p,
-                issuerRatesProvider.issuerCurveDiscountFactors(ISSUER_ID, USD),
+                issuerRatesProvider.issuerCurveDiscountFactors(CapitalIndexedBondCurveDataSet.getIssuerId(), USD),
                 zSpread,
                 compoundedRateType,
                 periodsPerYear)));
     return sensi1.combinedWith(sensi2);
-  }
-
-  //-------------------------------------------------------------------------
-  private static ImmutableRatesProvider getRatesProvider(LocalDate valuationDate, LocalDateDoubleTimeSeries timeSeries) {
-    PriceIndexValues indexCurve = ForwardPriceIndexValues.of(US_CPI_U, valuationDate, CPI_CURVE, timeSeries);
-    ImmutableMap<PriceIndex, PriceIndexValues> map = ImmutableMap.of(US_CPI_U, indexCurve);
-    return ImmutableRatesProvider.builder(valuationDate)
-        .fxRateProvider(FxMatrix.empty())
-        .priceIndexValues(map)
-        .timeSeries(US_CPI_U, timeSeries)
-        .build();
-  }
-
-  private static IssuerCurveDiscountFactors getIssuerCurveDiscountFactors(LocalDate valuationDate) {
-    DiscountFactors dscIssuer = ZeroRateDiscountFactors.of(USD, valuationDate, ISSUER_CURVE);
-    return IssuerCurveDiscountFactors.of(dscIssuer, GROUP_ISSUER);
-  }
-
-  private static LegalEntityDiscountingProvider getLegalEntityDiscountingProvider(LocalDate valuationDate) {
-    DiscountFactors dscIssuer = ZeroRateDiscountFactors.of(USD, valuationDate, ISSUER_CURVE);
-    DiscountFactors dscRepo = ZeroRateDiscountFactors.of(USD, valuationDate, REPO_CURVE);
-    return LegalEntityDiscountingProvider.builder()
-        .issuerCurves(ImmutableMap.<Pair<LegalEntityGroup, Currency>, DiscountFactors>of(
-            Pair.<LegalEntityGroup, Currency>of(GROUP_ISSUER, USD), dscIssuer))
-        .legalEntityMap(ImmutableMap.<StandardId, LegalEntityGroup>of(ISSUER_ID, GROUP_ISSUER))
-        .repoCurves(ImmutableMap.<Pair<BondGroup, Currency>, DiscountFactors>of(
-            Pair.<BondGroup, Currency>of(GROUP_REPO, USD), dscRepo))
-        .bondMap(ImmutableMap.<StandardId, BondGroup>of(ISSUER_ID, GROUP_REPO))
-        .build();
   }
 
 }

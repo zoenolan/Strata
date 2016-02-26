@@ -71,6 +71,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider,
       double cleanRealPrice) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     LocalDate settlementDate = trade.getTradeInfo().getSettlementDate().get();
     CurrencyAmount pvProduct = productPricer.presentValue(trade.getProduct(), ratesProvider,
         issuerDiscountFactorsProvider, settlementDate);
@@ -108,6 +109,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       CompoundedRateType compoundedRateType,
       int periodsPerYear) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     LocalDate settlementDate = trade.getTradeInfo().getSettlementDate().get();
     CurrencyAmount pvProduct = productPricer.presentValueWithZSpread(trade.getProduct(), ratesProvider,
         issuerDiscountFactorsProvider, settlementDate, zSpread, compoundedRateType, periodsPerYear);
@@ -137,6 +139,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider,
       double cleanRealPrice) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     LocalDate settlementDate = trade.getTradeInfo().getSettlementDate().get();
     PointSensitivityBuilder sensiProduct = productPricer.presentValueSensitivity(
         trade.getProduct(), ratesProvider, issuerDiscountFactorsProvider, settlementDate);
@@ -170,6 +173,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       CompoundedRateType compoundedRateType,
       int periodsPerYear) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     LocalDate settlementDate = trade.getTradeInfo().getSettlementDate().get();
     PointSensitivityBuilder sensiProduct = productPricer.presentValueSensitivityWithZSpread(trade.getProduct(),
         ratesProvider, issuerDiscountFactorsProvider, settlementDate, zSpread, compoundedRateType, periodsPerYear);
@@ -184,6 +188,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       double cleanRealPrice,
       PointSensitivityBuilder productPvSensi) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     PointSensitivityBuilder productSensi = productPvSensi.multipliedBy(trade.getQuantity());
     CapitalIndexedBond product = trade.getProduct();
     RepoCurveDiscountFactors discountFactors = issuerDiscountFactorsProvider.repoCurveDiscountFactors(
@@ -217,6 +222,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider,
       double cleanRealPrice) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     Security<CapitalIndexedBond> security = trade.getSecurity();
     CapitalIndexedBond product = security.getProduct();
     LocalDate standardSettlementDate = product.getSettlementDateOffset().adjust(ratesProvider.getValuationDate());
@@ -275,6 +281,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       CompoundedRateType compoundedRateType,
       int periodsPerYear) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     Security<CapitalIndexedBond> security = trade.getSecurity();
     CapitalIndexedBond product = security.getProduct();
     LocalDate standardSettlementDate = product.getSettlementDateOffset().adjust(ratesProvider.getValuationDate());
@@ -339,6 +346,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider,
       double cleanRealPrice) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     Security<CapitalIndexedBond> security = trade.getSecurity();
     CapitalIndexedBond product = security.getProduct();
     LocalDate standardSettlementDate = product.getSettlementDateOffset().adjust(ratesProvider.getValuationDate());
@@ -395,6 +403,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       CompoundedRateType compoundedRateType,
       int periodsPerYear) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     Security<CapitalIndexedBond> security = trade.getSecurity();
     CapitalIndexedBond product = security.getProduct();
     LocalDate standardSettlementDate = product.getSettlementDateOffset().adjust(ratesProvider.getValuationDate());
@@ -552,6 +561,12 @@ public class DiscountingCapitalIndexedBondTradePricer {
     PointSensitivityBuilder netAmountSensi =
         productPricer.getPeriodPricer().forecastValueSensitivity(settlement, ratesProvider);
     return netAmountSensi.multipliedBy(netAmountRealByUnit);
+  }
+
+  //-------------------------------------------------------------------------
+  private void validate(RatesProvider ratesProvider, LegalEntityDiscountingProvider issuerDiscountFactorsProvider) {
+    ArgChecker.isTrue(ratesProvider.getValuationDate().isEqual(issuerDiscountFactorsProvider.getValuationDate()),
+        "the rates providers should be for the same date");
   }
 
 }

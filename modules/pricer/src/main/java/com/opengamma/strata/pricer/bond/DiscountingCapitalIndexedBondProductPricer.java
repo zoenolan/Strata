@@ -106,6 +106,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
       RatesProvider ratesProvider,
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     return presentValue(product, ratesProvider, issuerDiscountFactorsProvider, ratesProvider.getValuationDate());
   }
 
@@ -116,7 +117,6 @@ public class DiscountingCapitalIndexedBondProductPricer {
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider,
       LocalDate referenceDate) {
 
-    validate(ratesProvider, issuerDiscountFactorsProvider);
     ExpandedCapitalIndexedBond expanded = product.expand();
     IssuerCurveDiscountFactors issuerDiscountFactors = issuerDiscountFactorsProvider.issuerCurveDiscountFactors(
         product.getLegalEntityId(), product.getCurrency());
@@ -157,6 +157,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
       CompoundedRateType compoundedRateType,
       int periodsPerYear) {
 
+    validate(ratesProvider, issuerDiscountFactorsProvider);
     return presentValueWithZSpread(product, ratesProvider, issuerDiscountFactorsProvider,
         ratesProvider.getValuationDate(), zSpread, compoundedRateType, periodsPerYear);
   }
@@ -171,7 +172,6 @@ public class DiscountingCapitalIndexedBondProductPricer {
       CompoundedRateType compoundedRateType,
       int periodsPerYear) {
 
-    validate(ratesProvider, issuerDiscountFactorsProvider);
     ExpandedCapitalIndexedBond expanded = product.expand();
     IssuerCurveDiscountFactors issuerDiscountFactors = issuerDiscountFactorsProvider.issuerCurveDiscountFactors(
         product.getLegalEntityId(), product.getCurrency());
@@ -353,7 +353,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
     LocalDate valuationDate = ratesProvider.getValuationDate();
     Currency currency = product.getCurrency();
     CurrencyAmount currentCash = CurrencyAmount.zero(currency);
-    if (!settlementDate.isAfter(valuationDate)) {
+    if (settlementDate.isBefore(valuationDate)) {
       ExpandedCapitalIndexedBond expanded = product.expand();
       double cashCoupon = product.getExCouponPeriod().getDays() != 0 ? 0d :
           currentCashPayment(expanded, ratesProvider, valuationDate);
@@ -365,8 +365,11 @@ public class DiscountingCapitalIndexedBondProductPricer {
     return currentCash;
   }
 
-  private double currentCashPayment(ExpandedCapitalIndexedBond product,
-      RatesProvider ratesProvider, LocalDate valuationDate) {
+  private double currentCashPayment(
+      ExpandedCapitalIndexedBond product,
+      RatesProvider ratesProvider,
+      LocalDate valuationDate) {
+
     double cash = 0d;
     for (CapitalIndexedBondPaymentPeriod period : product.getPeriodicPayments()) {
       if (period.getPaymentDate().isEqual(valuationDate)) {
@@ -782,7 +785,6 @@ public class DiscountingCapitalIndexedBondProductPricer {
     Schedule scheduleUnadjusted = product.getPeriodicSchedule().createSchedule().toUnadjusted();
     int nbCoupon = expanded.getPeriodicPayments().size();
     double couponPerYear = product.getPeriodicSchedule().getFrequency().eventsPerYear();
-    double notional = product.getNotional();
     double factorOnPeriod = 1d + yield / couponPerYear;
     double pvAtFirstCoupon = 0d;
     int pow = 0;
@@ -791,11 +793,11 @@ public class DiscountingCapitalIndexedBondProductPricer {
       CapitalIndexedBondPaymentPeriod period = expanded.getPeriodicPayments().get(loopcpn);
       if ((product.getExCouponPeriod().getDays() != 0 && !settlementDate.isAfter(period.getDetachmentDate())) ||
           (product.getExCouponPeriod().getDays() == 0 && period.getPaymentDate().isAfter(settlementDate))) {
-        pvAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow);
+        pvAtFirstCoupon += period.getRealCoupon() / Math.pow(factorOnPeriod, pow);
         ++pow;
       }
     }
-    pvAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow - 1);
+    pvAtFirstCoupon += 1d / Math.pow(factorOnPeriod, pow - 1);
     return pvAtFirstCoupon * Math.pow(factorOnPeriod, -factorToNext);
   }
 
@@ -881,7 +883,6 @@ public class DiscountingCapitalIndexedBondProductPricer {
     Schedule scheduleUnadjusted = product.getPeriodicSchedule().createSchedule().toUnadjusted();
     int nbCoupon = expanded.getPeriodicPayments().size();
     double couponPerYear = product.getPeriodicSchedule().getFrequency().eventsPerYear();
-    double notional = product.getNotional();
     double factorOnPeriod = 1d + yield / couponPerYear;
     double mdAtFirstCoupon = 0d;
     double pvAtFirstCoupon = 0d;
@@ -891,14 +892,14 @@ public class DiscountingCapitalIndexedBondProductPricer {
       CapitalIndexedBondPaymentPeriod period = expanded.getPeriodicPayments().get(loopcpn);
       if ((product.getExCouponPeriod().getDays() != 0 && !settlementDate.isAfter(period.getDetachmentDate())) ||
           (product.getExCouponPeriod().getDays() == 0 && period.getPaymentDate().isAfter(settlementDate))) {
-        mdAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow + 1) *
-            (loopcpn + factorToNext) / couponPerYear;
-        pvAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow);
+        mdAtFirstCoupon += period.getRealCoupon() / Math.pow(factorOnPeriod, pow + 1) *
+            (pow + factorToNext) / couponPerYear;
+        pvAtFirstCoupon += period.getRealCoupon() / Math.pow(factorOnPeriod, pow);
         ++pow;
       }
     }
-    mdAtFirstCoupon += notional * (pow - 1d + factorToNext) / (couponPerYear * Math.pow(factorOnPeriod, pow));
-    pvAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow - 1);
+    mdAtFirstCoupon += (pow - 1d + factorToNext) / (couponPerYear * Math.pow(factorOnPeriod, pow));
+    pvAtFirstCoupon += 1d / Math.pow(factorOnPeriod, pow - 1);
     double dp = pvAtFirstCoupon * Math.pow(factorOnPeriod, -factorToNext);
     double md = mdAtFirstCoupon * Math.pow(factorOnPeriod, -factorToNext) / dp;
     return md;
@@ -917,7 +918,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
    * @param yield  the standard yield
    * @return the convexity of the product 
    */
-  public double convexityFromYieldStandard(
+  public double convexityFromStandardYield(
       CapitalIndexedBond product,
       RatesProvider ratesProvider,
       LocalDate settlementDate,
@@ -926,7 +927,6 @@ public class DiscountingCapitalIndexedBondProductPricer {
     ExpandedCapitalIndexedBond expanded = product.expand();
     Schedule scheduleUnadjusted = product.getPeriodicSchedule().createSchedule().toUnadjusted();
     int nbCoupon = expanded.getPeriodicPayments().size();
-    double notional = product.getNotional();
     double couponPerYear = product.getPeriodicSchedule().getFrequency().eventsPerYear();
     double factorOnPeriod = 1d + yield / couponPerYear;
     double cvAtFirstCoupon = 0;
@@ -937,15 +937,15 @@ public class DiscountingCapitalIndexedBondProductPricer {
       CapitalIndexedBondPaymentPeriod period = expanded.getPeriodicPayments().get(loopcpn);
       if ((product.getExCouponPeriod().getDays() != 0 && !settlementDate.isAfter(period.getDetachmentDate())) ||
           (product.getExCouponPeriod().getDays() == 0 && period.getPaymentDate().isAfter(settlementDate))) {
-        cvAtFirstCoupon += notional * (pow + factorToNext) * (pow + factorToNext + 1d) /
+        cvAtFirstCoupon += period.getRealCoupon() * (pow + factorToNext) * (pow + factorToNext + 1d) /
             (Math.pow(factorOnPeriod, pow + 2) * couponPerYear * couponPerYear);
-        pvAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow);
+        pvAtFirstCoupon += period.getRealCoupon() / Math.pow(factorOnPeriod, pow);
         ++pow;
       }
     }
-    cvAtFirstCoupon += notional * (pow - 1d + factorToNext) *
+    cvAtFirstCoupon += (pow - 1d + factorToNext) *
         (pow + factorToNext) / (Math.pow(factorOnPeriod, pow + 1) * couponPerYear * couponPerYear);
-    pvAtFirstCoupon += notional / Math.pow(factorOnPeriod, pow - 1);
+    pvAtFirstCoupon += 1d / Math.pow(factorOnPeriod, pow - 1);
     double pv = pvAtFirstCoupon * Math.pow(factorOnPeriod, -factorToNext);
     double cv = cvAtFirstCoupon * Math.pow(factorOnPeriod, -factorToNext) / pv;
     return cv;
@@ -1119,16 +1119,16 @@ public class DiscountingCapitalIndexedBondProductPricer {
    * compounded rates of the discounting curve associated to the bond (Issuer Entity)
    * to match the present value.
    * 
-   * @param security  the security to price
+   * @param product  the product to price
    * @param ratesProvider  the rates provider, used to determine price index values
    * @param issuerDiscountFactorsProvider  the discount factors provider
    * @param presentValue  the present value
    * @param compoundedRateType  the compounded rate type
    * @param periodsPerYear  the number of periods per year
-   * @return the z-spread of the bond security
+   * @return the z-spread of the bond product
    */
   public double zSpreadFromCurvesAndPV(
-      Security<CapitalIndexedBond> security,
+      CapitalIndexedBond product,
       RatesProvider ratesProvider,
       LegalEntityDiscountingProvider issuerDiscountFactorsProvider,
       CurrencyAmount presentValue,
@@ -1136,13 +1136,12 @@ public class DiscountingCapitalIndexedBondProductPricer {
       int periodsPerYear) {
 
     validate(ratesProvider, issuerDiscountFactorsProvider);
-    CapitalIndexedBond product = security.getProduct();
     LocalDate settlementDate = product.getSettlementDateOffset().adjust(ratesProvider.getValuationDate());
     final Function<Double, Double> residual = new Function<Double, Double>() {
       @Override
       public Double apply(Double z) {
         return presentValueWithZSpread(product, ratesProvider, issuerDiscountFactorsProvider, settlementDate,
-            periodsPerYear, compoundedRateType, periodsPerYear).getAmount() - presentValue.getAmount();
+            z, compoundedRateType, periodsPerYear).getAmount() - presentValue.getAmount();
       }
     };
     double[] range = ROOT_BRACKETER.getBracketedPoints(residual, -0.5, 0.5); // Starting range is [-1%, 1%]
@@ -1176,7 +1175,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
         .yearFraction(previousAccrualDate, settlementDate, scheduleUnadjusted) * realCoupon * couponPerYear * notional;
     DaysAdjustment exCouponDays = product.getExCouponPeriod();
     double result = 0d;
-    if (exCouponDays.getDays() != 0 && settlementDate.isAfter(exCouponDays.adjust(paymentDate))) {
+    if (exCouponDays.getDays() != 0 && !settlementDate.isBefore(exCouponDays.adjust(paymentDate))) {
       result = accruedInterest - notional * realCoupon * couponPerYear *
           schedulePeriod.yearFraction(product.getDayCount(), scheduleUnadjusted);
     } else {
