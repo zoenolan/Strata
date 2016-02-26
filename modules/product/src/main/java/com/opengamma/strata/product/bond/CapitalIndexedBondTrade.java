@@ -70,7 +70,7 @@ public final class CapitalIndexedBondTrade
    * The payment sign should be compatible with the product quantity, 
    * thus the payment is negative for positive quantity and positive for negative quantity.
    * <p>
-   * This is effectively a fixed amount payment if inflation rate is fixed. 
+   * This is effectively a fixed amount payment after inflation rate gets fixed. 
    */
   @PropertyDefinition(validate = "notNull")
   private final CapitalIndexedBondPaymentPeriod settlement;
@@ -228,7 +228,7 @@ public final class CapitalIndexedBondTrade
    * The payment sign should be compatible with the product quantity,
    * thus the payment is negative for positive quantity and positive for negative quantity.
    * <p>
-   * This is effectively a fixed amount payment if inflation rate is fixed.
+   * This is effectively a fixed amount payment after inflation rate gets fixed.
    * @return the value of the property, not null
    */
   public CapitalIndexedBondPaymentPeriod getSettlement() {
@@ -564,7 +564,7 @@ public final class CapitalIndexedBondTrade
      * The payment sign should be compatible with the product quantity,
      * thus the payment is negative for positive quantity and positive for negative quantity.
      * <p>
-     * This is effectively a fixed amount payment if inflation rate is fixed.
+     * This is effectively a fixed amount payment after inflation rate gets fixed.
      * @param settlement  the new value, not null
      * @return this, for chaining, not null
      */
