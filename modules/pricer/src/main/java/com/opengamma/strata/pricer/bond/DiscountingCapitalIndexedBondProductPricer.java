@@ -603,14 +603,14 @@ public class DiscountingCapitalIndexedBondProductPricer {
     Schedule scheduleUnadjusted = scheduleAdjusted.toUnadjusted();
     List<Double> coupon = product.getRateCalculation().getGearing().orElse(ValueSchedule.ALWAYS_1)
         .resolveValues(scheduleAdjusted.getPeriods());
-    int nbCoupon = scheduleAdjusted.getPeriods().size();
+    int nbCoupon = scheduleAdjusted.getPeriods().size() - couponIndex(scheduleUnadjusted, settlementDate);
     YieldConvention yieldConvention = product.getYieldConvention();
     if (yieldConvention.equals(YieldConvention.US_IL_REAL)) {
       double pvAtFirstCoupon;
       double cpnRate = coupon.get(0);
       double couponPerYear = product.getPeriodicSchedule().getFrequency().eventsPerYear();
       if (Math.abs(yield) > 1.0E-8) {
-        double factorOnPeriod = 1 + yield / couponPerYear;
+        double factorOnPeriod = 1d + yield / couponPerYear;
         double vn = Math.pow(factorOnPeriod, 1 - nbCoupon);
         pvAtFirstCoupon = cpnRate * couponPerYear / yield * (factorOnPeriod - vn) + vn;
       } else {
@@ -627,31 +627,26 @@ public class DiscountingCapitalIndexedBondProductPricer {
     double v = 1d / (1d + yield / product.getPeriodicSchedule().getFrequency().eventsPerYear());
     if (yieldConvention.equals(YieldConvention.INDEX_LINKED_FLOAT)) {
       ExpandedCapitalIndexedBond expanded = product.expand();
-      RateObservation obs2 = expanded.getPeriodicPayments().get(couponIndex + 1).getRateObservation();
-      LocalDateDoubleTimeSeries ts = ratesProvider.priceIndexValues(product.getRateCalculation().getIndex())
-          .getFixings();
+      RateObservation obs = expanded.getPeriodicPayments().get(couponIndex).getRateObservation();
+      LocalDateDoubleTimeSeries ts = ratesProvider.priceIndexValues(product.getRateCalculation().getIndex()).getFixings();
       YearMonth lastKnownFixingMonth = YearMonth.from(ts.getLatestDate());
-      YearMonth paymentMonth1 = YearMonth.from(expanded.getPeriodicPayments().get(couponIndex).getPaymentDate());
       double indexRatio = ts.getLatestValue() / product.getStartIndexValue();
-      YearMonth paymentMonth2 = YearMonth.from(expanded.getPeriodicPayments().get(couponIndex + 1).getPaymentDate());
       YearMonth endFixingMonth2 = null;
-      if (obs2 instanceof InflationEndInterpolatedRateObservation) {
-        endFixingMonth2 = ((InflationEndInterpolatedRateObservation) obs2).getReferenceEndInterpolationMonth();
-      } else if (obs2 instanceof InflationEndMonthRateObservation) {
-        endFixingMonth2 = ((InflationEndMonthRateObservation) obs2).getReferenceEndMonth();
+      if (obs instanceof InflationEndInterpolatedRateObservation) {
+        endFixingMonth2 = ((InflationEndInterpolatedRateObservation) obs).getReferenceEndInterpolationMonth();
+      } else if (obs instanceof InflationEndMonthRateObservation) {
+        endFixingMonth2 = ((InflationEndMonthRateObservation) obs).getReferenceEndMonth();
       } else {
-        throw new IllegalArgumentException("The rate observation " + obs2.toString() + " is not supported.");
+        throw new IllegalArgumentException("The rate observation " + obs.toString() + " is not supported.");
       }
-      double lag1 = ChronoUnit.MONTHS.between(paymentMonth1, lastKnownFixingMonth);
-      double lag2 = ChronoUnit.MONTHS.between(endFixingMonth2, paymentMonth2);
-      double nbMonth = Math.max(lag1 + lag2, 0d);
+      double nbMonth = Math.abs(ChronoUnit.MONTHS.between(endFixingMonth2, lastKnownFixingMonth));
       double u = Math.sqrt(1d / (1d + 0.03));
       double a = indexRatio * Math.pow(u, nbMonth / 6d);
-      double firstCashFlow = firstYearFraction * realRate * indexRatio;
-      if (couponIndex == nbCoupon - 1) {
-        return Math.pow(u * v, factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate)) *
-            (firstCashFlow + 1d) * a / u;
+      if (nbCoupon == 1) {
+        return Math.pow(u * v, factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate) + 1d) *
+            (realRate + 1d) * a / u;
       } else {
+        double firstCashFlow = firstYearFraction * realRate * indexRatio;
         double secondYearFraction =
             scheduleUnadjusted.getPeriod(couponIndex  + 1).yearFraction(product.getDayCount(), scheduleUnadjusted);
         double secondCashFlow = secondYearFraction * realRate * indexRatio;
@@ -664,7 +659,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
     }
     if (yieldConvention.equals(YieldConvention.UK_IL_BOND)) {
       double firstCashFlow = firstYearFraction * realRate;
-      if (couponIndex == nbCoupon - 1) {
+      if (nbCoupon == 1) {
         return Math.pow(v, factorToNextCoupon(scheduleUnadjusted, product.getDayCount(),
             settlementDate)) * (firstCashFlow + 1);
       } else {
@@ -730,7 +725,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
 
     final Function<Double, Double> priceResidual = new Function<Double, Double>() {
       @Override
-      public Double apply(final Double y) {
+      public Double apply(Double y) {
         return dirtyPriceFromRealYield(product, ratesProvider, settlementDate, y) - dirtyPrice;
       }
     };
@@ -1109,7 +1104,8 @@ public class DiscountingCapitalIndexedBondProductPricer {
         if (product.getYieldConvention().equals(YieldConvention.INDEX_LINKED_FLOAT)) {
           return cleanNominalPriceFromDirtyNominalPrice(product, ratesProvider, settlementDate, dirtyPrice) - cleanPrice;
         }
-        return cleanRealPriceFromDirtyRealPrice(product, settlementDate, dirtyPrice) - cleanPrice;
+        double dirtyRealPrice = realPriceFromNominalPrice(product, ratesProvider, settlementDate, dirtyPrice);
+        return cleanRealPriceFromDirtyRealPrice(product, settlementDate, dirtyRealPrice) - cleanPrice;
       }
     };
     double[] range = ROOT_BRACKETER.getBracketedPoints(residual, -0.5, 0.5); // Starting range is [-1%, 1%]
@@ -1219,12 +1215,27 @@ public class DiscountingCapitalIndexedBondProductPricer {
     return couponIndex;
   }
 
-  private double indexRatio(CapitalIndexedBond product, RatesProvider ratesProvider, LocalDate settlementDate) {
+  public double indexRatio(CapitalIndexedBond product, RatesProvider ratesProvider, LocalDate settlementDate) {
     LocalDate endReferenceDate = settlementDate.isBefore(ratesProvider.getValuationDate()) ?
         ratesProvider.getValuationDate() : settlementDate;
     RateObservation modifiedObservation =
         product.getRateCalculation().createRateObservation(endReferenceDate, product.getStartIndexValue());
     return 1d + periodPricer.getRateObservationFn().rate(
+        modifiedObservation,
+        product.getPeriodicSchedule().getStartDate(), // dates not used
+        product.getPeriodicSchedule().getEndDate(),
+        ratesProvider);
+  }
+
+  PointSensitivityBuilder indexRatioSensitivity(
+      CapitalIndexedBond product,
+      RatesProvider ratesProvider,
+      LocalDate settlementDate) {
+    LocalDate endReferenceDate = settlementDate.isBefore(ratesProvider.getValuationDate()) ?
+        ratesProvider.getValuationDate() : settlementDate;
+    RateObservation modifiedObservation =
+        product.getRateCalculation().createRateObservation(endReferenceDate, product.getStartIndexValue());
+    return periodPricer.getRateObservationFn().rateSensitivity(
         modifiedObservation,
         product.getPeriodicSchedule().getStartDate(), // dates not used
         product.getPeriodicSchedule().getEndDate(),

@@ -215,7 +215,8 @@ public class DiscountingCapitalIndexedBondTradePricer {
     Currency currency = product.getCurrency();
     double df = issuerDiscountFactorsProvider
         .repoCurveDiscountFactors(securityId, legalEntityId, currency).discountFactor(standardSettlementDate);
-    CurrencyAmount pvStandard = netAmount(trade, ratesProvider, cleanRealPrice).multipliedBy(df);
+    CurrencyAmount pvStandard =
+        netAmountStandard(trade, ratesProvider, standardSettlementDate, cleanRealPrice).multipliedBy(df);
     if (standardSettlementDate.isEqual(tradeSettlementDate)) {
       return pvStandard;
     }
@@ -232,7 +233,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       pvDiff = productPricer.presentValueCoupon(
           expanded, ratesProvider, discountFactors, standardSettlementDate, tradeSettlementDate, exCoupon);
     }
-    return pvStandard.plus(pvDiff);
+    return pvStandard.plus(pvDiff * trade.getQuantity());
   }
 
   /**
@@ -274,7 +275,8 @@ public class DiscountingCapitalIndexedBondTradePricer {
     Currency currency = product.getCurrency();
     double df = issuerDiscountFactorsProvider
         .repoCurveDiscountFactors(securityId, legalEntityId, currency).discountFactor(standardSettlementDate);
-    CurrencyAmount pvStandard = netAmount(trade, ratesProvider, cleanRealPrice).multipliedBy(df);
+    CurrencyAmount pvStandard =
+        netAmountStandard(trade, ratesProvider, standardSettlementDate, cleanRealPrice).multipliedBy(df);
     if (standardSettlementDate.isEqual(tradeSettlementDate)) {
       return pvStandard;
     }
@@ -307,7 +309,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
           periodsPerYear,
           exCoupon);
     }
-    return pvStandard.plus(pvDiff);
+    return pvStandard.plus(pvDiff * trade.getQuantity());
   }
 
   //-------------------------------------------------------------------------
@@ -341,8 +343,9 @@ public class DiscountingCapitalIndexedBondTradePricer {
         issuerDiscountFactorsProvider.repoCurveDiscountFactors(securityId, legalEntityId, currency);
     double df = repoDiscountFactors.discountFactor(standardSettlementDate);
     PointSensitivityBuilder dfSensi = repoDiscountFactors.zeroRatePointSensitivity(standardSettlementDate);
-    PointSensitivityBuilder pvSensiStandard = netAmountSensitivity(trade, ratesProvider, cleanRealPrice).multipliedBy(df)
-        .combinedWith(dfSensi.multipliedBy(netAmount(trade, ratesProvider, cleanRealPrice).getAmount()));
+    PointSensitivityBuilder pvSensiStandard = netAmountStandardSensitivity(
+        trade, ratesProvider, standardSettlementDate, cleanRealPrice).multipliedBy(df).combinedWith(
+        dfSensi.multipliedBy(netAmountStandard(trade, ratesProvider, standardSettlementDate, cleanRealPrice).getAmount()));
     if (standardSettlementDate.isEqual(tradeSettlementDate)) {
       return pvSensiStandard;
     }
@@ -359,7 +362,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
       pvSensiDiff = pvSensiDiff.combinedWith(productPricer.presentValueSensitivityCoupon(expanded, ratesProvider,
           issuerDiscountFactors, standardSettlementDate, tradeSettlementDate, exCoupon));
     }
-    return pvSensiStandard.combinedWith(pvSensiDiff);
+    return pvSensiStandard.combinedWith(pvSensiDiff.multipliedBy(trade.getQuantity()));
   }
 
   /**
@@ -398,8 +401,9 @@ public class DiscountingCapitalIndexedBondTradePricer {
         issuerDiscountFactorsProvider.repoCurveDiscountFactors(securityId, legalEntityId, currency);
     double df = repoDiscountFactors.discountFactor(standardSettlementDate);
     PointSensitivityBuilder dfSensi = repoDiscountFactors.zeroRatePointSensitivity(standardSettlementDate);
-    PointSensitivityBuilder pvSensiStandard = netAmountSensitivity(trade, ratesProvider, cleanRealPrice).multipliedBy(df)
-        .combinedWith(dfSensi.multipliedBy(netAmount(trade, ratesProvider, cleanRealPrice).getAmount()));
+    PointSensitivityBuilder pvSensiStandard = netAmountStandardSensitivity(
+        trade, ratesProvider, standardSettlementDate, cleanRealPrice).multipliedBy(df).combinedWith(
+        dfSensi.multipliedBy(netAmountStandard(trade, ratesProvider, standardSettlementDate, cleanRealPrice).getAmount()));
     if (standardSettlementDate.isEqual(tradeSettlementDate)) {
       return pvSensiStandard;
     }
@@ -433,7 +437,7 @@ public class DiscountingCapitalIndexedBondTradePricer {
           periodsPerYear,
           exCoupon));
     }
-    return pvSensiStandard.combinedWith(pvSensiDiff);
+    return pvSensiStandard.combinedWith(pvSensiDiff.multipliedBy(trade.getQuantity()));
   }
 
   //-------------------------------------------------------------------------
@@ -528,6 +532,20 @@ public class DiscountingCapitalIndexedBondTradePricer {
     return CurrencyAmount.of(settlement.getCurrency(), netAmount * netAmountRealByUnit);
   }
 
+  private CurrencyAmount netAmountStandard(
+      CapitalIndexedBondTrade trade,
+      RatesProvider ratesProvider,
+      LocalDate standardSettlementDate,
+      double realCleanPrice) {
+
+    CapitalIndexedBondPaymentPeriod settlement = trade.getSettlement();
+    double notional = trade.getProduct().getNotional();
+    double netAmountRealByUnit =
+        realCleanPrice + productPricer.accruedInterest(trade.getProduct(), standardSettlementDate) / notional;
+    double indexRatio = productPricer.indexRatio(trade.getProduct(), ratesProvider, standardSettlementDate);
+    return CurrencyAmount.of(settlement.getCurrency(), indexRatio * netAmountRealByUnit * settlement.getNotional());
+  }
+
   /**
    * Calculates the net amount sensitivity of the settlement of the bond trade from real clean price. 
    * 
@@ -549,6 +567,21 @@ public class DiscountingCapitalIndexedBondTradePricer {
     PointSensitivityBuilder netAmountSensi =
         productPricer.getPeriodPricer().forecastValueSensitivity(settlement, ratesProvider);
     return netAmountSensi.multipliedBy(netAmountRealByUnit);
+  }
+
+  private PointSensitivityBuilder netAmountStandardSensitivity(
+      CapitalIndexedBondTrade trade,
+      RatesProvider ratesProvider,
+      LocalDate standardSettlementDate,
+      double realCleanPrice) {
+
+    CapitalIndexedBondPaymentPeriod settlement = trade.getSettlement();
+    double notional = trade.getProduct().getNotional();
+    double netAmountRealByUnit =
+        realCleanPrice + productPricer.accruedInterest(trade.getProduct(), standardSettlementDate) / notional;
+    PointSensitivityBuilder indexRatioSensi =
+        productPricer.indexRatioSensitivity(trade.getProduct(), ratesProvider, standardSettlementDate);
+    return indexRatioSensi.multipliedBy(netAmountRealByUnit * settlement.getNotional());
   }
 
   //-------------------------------------------------------------------------
