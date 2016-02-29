@@ -64,6 +64,10 @@ public class DiscountingCapitalIndexedBondProductPricer {
    */
   private static final BracketRoot ROOT_BRACKETER = new BracketRoot();
   /**
+   * Small parameter used in finite difference approximation.
+   */
+  private static final double FD_EPS = 1.0e-5;
+  /**
    * Pricer for {@link CapitalIndexedBondPaymentPeriod}.
    */
   private final DiscountingCapitalIndexedBondPaymentPeriodPricer periodPricer;
@@ -826,9 +830,9 @@ public class DiscountingCapitalIndexedBondProductPricer {
       double yield) {
 
     double price = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield);
-    double priceplus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield + 10e-6);
-    double priceminus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield - 10e-6);
-    return -0.5 * (priceplus - priceminus) / (price * 10e-6);
+    double priceplus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield + FD_EPS);
+    double priceminus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield - FD_EPS);
+    return -0.5 * (priceplus - priceminus) / (price * FD_EPS);
   }
 
   /**
@@ -854,9 +858,9 @@ public class DiscountingCapitalIndexedBondProductPricer {
       double yield) {
 
     double price = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield);
-    double priceplus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield + 10e-6);
-    double priceminus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield - 10e-6);
-    return (priceplus - 2 * price + priceminus) / (price * 10e-6 * 10e-6);
+    double priceplus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield + FD_EPS);
+    double priceminus = cleanPriceFromRealYield(product, ratesProvider, settlementDate, yield - FD_EPS);
+    return (priceplus - 2 * price + priceminus) / (price * FD_EPS * FD_EPS);
   }
 
   /**
