@@ -17,7 +17,7 @@ import com.opengamma.strata.collect.ArgChecker;
  * 
  * This defines how the reference index calculation occurs.
  */
-public enum ReferencePriceIndexCalculationMethod {
+public enum PriceIndexCalculationMethod {
   
   /**
    * The reference index is the price index of a month.
@@ -41,7 +41,7 @@ public enum ReferencePriceIndexCalculationMethod {
   private final String name;
 
   // create
-  private ReferencePriceIndexCalculationMethod(String name) {
+  private PriceIndexCalculationMethod(String name) {
     this.name = name;
   }
 
@@ -54,7 +54,7 @@ public enum ReferencePriceIndexCalculationMethod {
    * @throws IllegalArgumentException if the name is not known
    */
   @FromString
-  public static ReferencePriceIndexCalculationMethod of(String uniqueName) {
+  public static PriceIndexCalculationMethod of(String uniqueName) {
     ArgChecker.notNull(uniqueName, "uniqueName");
     return valueOf(uniqueName.replace('-', '_').toUpperCase(Locale.ENGLISH));
   }

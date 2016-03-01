@@ -18,6 +18,7 @@ import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.product.bond.YieldConvention.INDEX_LINKED_FLOAT;
 import static com.opengamma.strata.product.bond.YieldConvention.US_IL_REAL;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.INTERPOLATED;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -46,7 +47,7 @@ public class ExpandedCapitalIndexedBondTest {
       .gearing(ValueSchedule.of(COUPON))
       .index(US_CPI_U)
       .lag(Period.ofMonths(3))
-      .interpolated(true)
+      .indexCalculationMethod(INTERPOLATED)
       .build();
   private static final double NOTIONAL = 10_000_000d;
   private static final double START_INDEX = 198.475;

@@ -15,50 +15,50 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * Test {@link ReferencePriceIndexCalculationMethod}.
+ * Test {@link PriceIndexCalculationMethod}.
  */
 @Test
-public class ReferencePriceIndexCalculationMethodTest {
+public class PriceIndexCalculationMethodTest {
 
   //-------------------------------------------------------------------------
   @DataProvider(name = "name")
   static Object[][] data_name() {
     return new Object[][] {
-      {ReferencePriceIndexCalculationMethod.MONTHLY, "Monthly" },
-      {ReferencePriceIndexCalculationMethod.INTERPOLATED, "Interpolated" },
-      {ReferencePriceIndexCalculationMethod.INTERPOLATED_JAPAN, "Interpolated-Japan" },
+      {PriceIndexCalculationMethod.MONTHLY, "Monthly" },
+      {PriceIndexCalculationMethod.INTERPOLATED, "Interpolated" },
+      {PriceIndexCalculationMethod.INTERPOLATED_JAPAN, "Interpolated-Japan" },
     };
   }
 
   @Test(dataProvider = "name")
-  public void test_toString(ReferencePriceIndexCalculationMethod convention, String name) {
+  public void test_toString(PriceIndexCalculationMethod convention, String name) {
     assertEquals(convention.toString(), name);
   }
 
   @Test(dataProvider = "name")
-  public void test_of_lookup(ReferencePriceIndexCalculationMethod convention, String name) {
-    assertEquals(ReferencePriceIndexCalculationMethod.of(name), convention);
+  public void test_of_lookup(PriceIndexCalculationMethod convention, String name) {
+    assertEquals(PriceIndexCalculationMethod.of(name), convention);
   }
 
   public void test_of_lookup_notFound() {
-    assertThrows(() -> ReferencePriceIndexCalculationMethod.of("Rubbish"), IllegalArgumentException.class);
+    assertThrows(() -> PriceIndexCalculationMethod.of("Rubbish"), IllegalArgumentException.class);
   }
 
   public void test_of_lookup_null() {
-    assertThrows(() -> ReferencePriceIndexCalculationMethod.of(null), IllegalArgumentException.class);
+    assertThrows(() -> PriceIndexCalculationMethod.of(null), IllegalArgumentException.class);
   }
 
   //-------------------------------------------------------------------------
   public void coverage() {
-    coverEnum(ReferencePriceIndexCalculationMethod.class);
+    coverEnum(PriceIndexCalculationMethod.class);
   }
 
   public void test_serialization() {
-    assertSerialization(ReferencePriceIndexCalculationMethod.INTERPOLATED);
+    assertSerialization(PriceIndexCalculationMethod.INTERPOLATED);
   }
 
   public void test_jodaConvert() {
-    assertJodaConvert(ReferencePriceIndexCalculationMethod.class, ReferencePriceIndexCalculationMethod.INTERPOLATED);
+    assertJodaConvert(PriceIndexCalculationMethod.class, PriceIndexCalculationMethod.INTERPOLATED);
   }
 
 }

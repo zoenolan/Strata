@@ -35,6 +35,8 @@ import static com.opengamma.strata.pricer.swap.SwapDummyData.IBOR_RATE_PAYMENT_P
 import static com.opengamma.strata.pricer.swap.SwapDummyData.IBOR_RATE_PAYMENT_PERIOD_REC_GBP_2;
 import static com.opengamma.strata.pricer.swap.SwapDummyData.NOTIONAL_EXCHANGE_REC_GBP;
 import static com.opengamma.strata.product.swap.CompoundingMethod.STRAIGHT;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.INTERPOLATED;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.MONTHLY;
 import static com.opengamma.strata.product.swap.SwapLegType.FIXED;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -639,7 +641,7 @@ public class DiscountingSwapLegPricerTest {
         .build();
     InflationRateCalculation rateCalc = InflationRateCalculation.builder()
         .index(GB_RPI)
-        .interpolated(interpolated)
+        .indexCalculationMethod(interpolated ? INTERPOLATED : MONTHLY)
         .lag(Period.ofMonths(3))
         .build();
     NotionalSchedule notionalSchedule = NotionalSchedule.of(GBP, NOTIONAL);

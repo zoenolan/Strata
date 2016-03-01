@@ -27,6 +27,8 @@ import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
 import static com.opengamma.strata.product.swap.CompoundingMethod.STRAIGHT;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.INTERPOLATED;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.MONTHLY;
 import static com.opengamma.strata.product.swap.SwapLegType.FIXED;
 import static com.opengamma.strata.product.swap.SwapLegType.IBOR;
 import static org.testng.Assert.assertEquals;
@@ -542,7 +544,7 @@ public class RateCalculationSwapLegTest {
         .build();
     InflationRateCalculation rateCalc = InflationRateCalculation.builder()
         .index(GB_RPI)
-        .interpolated(false)
+        .indexCalculationMethod(MONTHLY)
         .lag(Period.ofMonths(3))
         .build();
     NotionalSchedule notionalSchedule = NotionalSchedule.of(GBP, 1000d);
@@ -604,7 +606,7 @@ public class RateCalculationSwapLegTest {
         .build();
     InflationRateCalculation rateCalc = InflationRateCalculation.builder()
         .index(GB_RPI)
-        .interpolated(true)
+        .indexCalculationMethod(INTERPOLATED)
         .lag(Period.ofMonths(3))
         .build();
     NotionalSchedule notionalSchedule = NotionalSchedule.of(GBP, 1000d);

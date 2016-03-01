@@ -14,6 +14,7 @@ import static com.opengamma.strata.collect.TestHelper.assertThrows;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.product.bond.YieldConvention.US_IL_REAL;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.INTERPOLATED;
 import static org.testng.Assert.assertEquals;
 
 import java.time.LocalDate;
@@ -55,7 +56,7 @@ public class CapitalIndexedBondTradeTest {
       .gearing(COUPON)
       .index(US_CPI_U)
       .lag(Period.ofMonths(3))
-      .interpolated(true)
+      .indexCalculationMethod(INTERPOLATED)
       .build();
   private static final DaysAdjustment SETTLE_OFFSET = DaysAdjustment.ofBusinessDays(2, USNY);
   private static final StandardId LEGAL_ENTITY = StandardId.of("OG-Ticker", "US-Govt");

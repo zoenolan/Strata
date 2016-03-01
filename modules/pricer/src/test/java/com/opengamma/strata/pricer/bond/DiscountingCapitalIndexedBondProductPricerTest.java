@@ -17,6 +17,8 @@ import static com.opengamma.strata.market.value.CompoundedRateType.PERIODIC;
 import static com.opengamma.strata.product.bond.YieldConvention.INDEX_LINKED_FLOAT;
 import static com.opengamma.strata.product.bond.YieldConvention.UK_IL_BOND;
 import static com.opengamma.strata.product.bond.YieldConvention.US_IL_REAL;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.INTERPOLATED;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.MONTHLY;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -69,7 +71,7 @@ public class DiscountingCapitalIndexedBondProductPricerTest {
       .gearing(REAL_COUPON)
       .index(US_CPI_U)
       .lag(Period.ofMonths(3))
-      .interpolated(true)
+      .indexCalculationMethod(INTERPOLATED)
       .build();
   private static final BusinessDayAdjustment EX_COUPON_ADJ =
       BusinessDayAdjustment.of(BusinessDayConventions.PRECEDING, USNY);
@@ -561,7 +563,7 @@ public class DiscountingCapitalIndexedBondProductPricerTest {
       .gearing(CPN_US)
       .index(US_CPI_U)
       .lag(Period.ofMonths(3))
-      .interpolated(true)
+      .indexCalculationMethod(INTERPOLATED)
       .build();
   private static final LocalDate START_USD = LocalDate.of(2010, 7, 15);
   private static final LocalDate END_USD = LocalDate.of(2020, 7, 15);
@@ -652,7 +654,7 @@ public class DiscountingCapitalIndexedBondProductPricerTest {
       .gearing(CPN_GOV)
       .index(GB_RPI)
       .lag(Period.ofMonths(8))
-      .interpolated(false)
+      .indexCalculationMethod(MONTHLY)
       .build();
   private static final LocalDate START_GOV = LocalDate.of(1983, 10, 16);
   private static final LocalDate END_GOV = LocalDate.of(2020, 4, 16);
@@ -764,7 +766,7 @@ public class DiscountingCapitalIndexedBondProductPricerTest {
       .gearing(CPN_CORP)
       .index(GB_RPI)
       .lag(Period.ofMonths(3))
-      .interpolated(true)
+      .indexCalculationMethod(MONTHLY)
       .build();
   private static final LocalDate START_CORP = LocalDate.of(2010, 3, 22);
   private static final LocalDate END_CORP = LocalDate.of(2040, 3, 22);
