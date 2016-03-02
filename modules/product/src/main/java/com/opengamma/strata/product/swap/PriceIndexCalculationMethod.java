@@ -14,8 +14,11 @@ import com.opengamma.strata.collect.ArgChecker;
 
 /**
  * Reference price index calculation method. 
- * 
+ * <p>
  * This defines how the reference index calculation occurs.
+ * <p>
+ * References: "Bond Pricing", OpenGamma Documentation 5, Version 2.0, May 2013, 
+ * "Inflation Instruments: Swap Zero-coupon, Year-on-year and Bonds."
  */
 public enum PriceIndexCalculationMethod {
   

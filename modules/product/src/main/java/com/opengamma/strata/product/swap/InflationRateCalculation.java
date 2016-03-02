@@ -180,9 +180,12 @@ public final class InflationRateCalculation
       // interpolate between data from two different months
       double weight = 1d - (endDate.getDayOfMonth() - 1d) / endDate.lengthOfMonth();
       return InflationInterpolatedRateObservation.of(index, referenceStartMonth, referenceEndMonth, weight);
-    } else {
+    } else if (indexCalculationMethod.equals(PriceIndexCalculationMethod.MONTHLY)) {
       // no interpolation
       return InflationMonthlyRateObservation.of(index, referenceStartMonth, referenceEndMonth);
+    } else {
+      throw new IllegalArgumentException(
+          "PriceIndexCalculationMethod " + indexCalculationMethod.toString() + " is not supported");
     }
   }
 
@@ -202,9 +205,23 @@ public final class InflationRateCalculation
       // interpolate between data from two different months
       double weight = 1d - (endDate.getDayOfMonth() - 1d) / endDate.lengthOfMonth();
       return InflationEndInterpolatedRateObservation.of(index, startIndexValue, referenceEndMonth, weight);
-    } else {
+    } else if (indexCalculationMethod.equals(PriceIndexCalculationMethod.MONTHLY)) {
       // no interpolation
       return InflationEndMonthRateObservation.of(index, startIndexValue, referenceEndMonth);
+    } else if (indexCalculationMethod.equals(PriceIndexCalculationMethod.INTERPOLATED_JAPAN)) {
+      // interpolation, Japan
+      double weight = 1d;
+      int dayOfMonth = endDate.getDayOfMonth();
+      if (dayOfMonth > 10) {
+        weight -= (dayOfMonth - 10d) / endDate.lengthOfMonth();
+      } else if (dayOfMonth < 10) {
+        weight -= (dayOfMonth + endDate.minusMonths(1).lengthOfMonth() - 10d) / endDate.minusMonths(1).lengthOfMonth();
+        referenceEndMonth = referenceEndMonth.minusMonths(1);
+      }
+      return InflationEndInterpolatedRateObservation.of(index, startIndexValue, referenceEndMonth, weight);
+    } else {
+      throw new IllegalArgumentException(
+          "PriceIndexCalculationMethod " + indexCalculationMethod.toString() + " is not supported");
     }
   }
 

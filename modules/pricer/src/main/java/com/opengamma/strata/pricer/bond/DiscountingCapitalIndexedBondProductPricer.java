@@ -677,6 +677,31 @@ public class DiscountingCapitalIndexedBondProductPricer {
             Math.pow(v, factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate));
       }
     }
+    if (yieldConvention.equals(YieldConvention.JAPAN_IL_SIMPLE)) {
+      LocalDate maturityDate = product.getPeriodicSchedule().getEndDate();
+      double cpnRate = coupon.get(0);
+      double maturity = product.getDayCount().relativeYearFraction(settlementDate, maturityDate);
+      double cleanPrice = (1d + cpnRate * maturity) / (1d + yield * maturity);
+      return dirtyRealPriceFromCleanRealPrice(product, settlementDate, cleanPrice);
+    }
+    if (yieldConvention.equals(YieldConvention.JAPAN_IL_COMPOUND)) {
+      ExpandedCapitalIndexedBond expanded = product.expand();
+      double pvAtFirstCoupon = 0d;
+      int pow = 0;
+      double factorToNext = factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate);
+      for (int loopcpn = 0; loopcpn < nbCoupon; loopcpn++) {
+        CapitalIndexedBondPaymentPeriod period = expanded.getPeriodicPayments().get(loopcpn);
+        if ((product.getExCouponPeriod().getDays() != 0 && !settlementDate.isAfter(period.getDetachmentDate())) ||
+            (product.getExCouponPeriod().getDays() == 0 && period.getPaymentDate().isAfter(settlementDate))) {
+          double indexRatio = indexRatio(product, ratesProvider, period.getPaymentDate());
+          pvAtFirstCoupon += period.getRealCoupon() * Math.pow(v, pow) * indexRatio;
+          ++pow;
+        }
+      }
+      pvAtFirstCoupon += Math.pow(v, pow - 1) *
+          indexRatio(product, ratesProvider, expanded.getNominalPayment().getPaymentDate());
+      return pvAtFirstCoupon * Math.pow(v, factorToNext);
+    }
     throw new IllegalArgumentException(
         "The convention " + product.getYieldConvention().toString() + " is not supported.");
   }
