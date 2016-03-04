@@ -188,10 +188,15 @@ public class DiscountingCapitalIndexedBondTradePricer {
   /**
    * Calculates the present value of the settlement of the bond trade from the clean price.
    * <p>
+<<<<<<< HEAD
    * Because the sign of the settlement notional is opposite to that of the product, negative amount will be returned 
    * for positive quantity of trade.  
    * <p>
    * Coupon payments of the underlying product are considered based on the settlement date of the trade. 
+=======
+   * Since the sign of the settlement notional is opposite to that of the product, negative amount will be returned 
+   * for positive quantity of trade.  
+>>>>>>> topic/inflation-bonds
    * 
    * @param trade  the trade to price
    * @param ratesProvider  the rates provider, used to determine price index values
@@ -239,13 +244,20 @@ public class DiscountingCapitalIndexedBondTradePricer {
   /**
    * Calculates the present value of the settlement of the bond trade from the clean price with z-spread.
    * <p>
+<<<<<<< HEAD
    * Because the sign of the settlement notional is opposite to that of the product, negative amount will be returned 
+=======
+   * Since the sign of the settlement notional is opposite to that of the product, negative amount will be returned 
+>>>>>>> topic/inflation-bonds
    * for positive quantity of trade.  
    * <p>
    * The z-spread is a parallel shift applied to continuously compounded rates or periodic
    * compounded rates of the discounting curve.
+<<<<<<< HEAD
    * <p>
    * Coupon payments of the underlying product are considered based on the settlement date of the trade. 
+=======
+>>>>>>> topic/inflation-bonds
    * 
    * @param trade  the trade to price
    * @param ratesProvider  the rates provider, used to determine price index values
@@ -366,7 +378,12 @@ public class DiscountingCapitalIndexedBondTradePricer {
   }
 
   /**
+<<<<<<< HEAD
    * Calculates the present value sensitivity of the settlement of the bond trade from the real clean price.
+=======
+   * Calculates the present value sensitivity of the settlement of the bond trade from the real clean price 
+   * with z-spread.
+>>>>>>> topic/inflation-bonds
    * <p>
    * The present value sensitivity of the settlement is the sensitivity of the present value to
    * the underlying curves.
@@ -510,7 +527,11 @@ public class DiscountingCapitalIndexedBondTradePricer {
   /**
    * Calculates the net amount of the settlement of the bond trade from real clean price. 
    * <p>
+<<<<<<< HEAD
    * Because the sign of the settlement notional is opposite to that of the product, negative amount will be returned 
+=======
+   * Since the sign of the settlement notional is opposite to that of the product, negative amount will be returned 
+>>>>>>> topic/inflation-bonds
    * for positive quantity of trade.  
    * 
    * @param trade  the trade
