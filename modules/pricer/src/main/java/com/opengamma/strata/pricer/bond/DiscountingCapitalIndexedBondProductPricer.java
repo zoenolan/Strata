@@ -18,6 +18,7 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
 import com.opengamma.strata.basics.date.DayCount;
+import com.opengamma.strata.basics.date.DayCounts;
 import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.schedule.Schedule;
 import com.opengamma.strata.basics.schedule.SchedulePeriod;
@@ -607,7 +608,8 @@ public class DiscountingCapitalIndexedBondProductPricer {
     Schedule scheduleUnadjusted = scheduleAdjusted.toUnadjusted();
     List<Double> coupon = product.getRateCalculation().getGearing().orElse(ValueSchedule.ALWAYS_1)
         .resolveValues(scheduleAdjusted.getPeriods());
-    int nbCoupon = scheduleAdjusted.getPeriods().size() - couponIndex(scheduleUnadjusted, settlementDate);
+    int couponIndex = couponIndex(scheduleUnadjusted, settlementDate);
+    int nbCoupon = scheduleAdjusted.getPeriods().size() - couponIndex;
     double couponPerYear = product.getPeriodicSchedule().getFrequency().eventsPerYear();
     YieldConvention yieldConvention = product.getYieldConvention();
     if (yieldConvention.equals(YieldConvention.US_IL_REAL)) {
@@ -623,13 +625,11 @@ public class DiscountingCapitalIndexedBondProductPricer {
       return pvAtFirstCoupon /
           (1d + factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate) * yield / couponPerYear);
     }
-
-    int couponIndex = couponIndex(scheduleUnadjusted, settlementDate);
     double realRate = coupon.get(couponIndex);
-    double firstYearFraction =
-        scheduleUnadjusted.getPeriod(couponIndex).yearFraction(product.getDayCount(), scheduleUnadjusted);
     double v = 1d / (1d + yield / couponPerYear);
     if (yieldConvention.equals(YieldConvention.INDEX_LINKED_FLOAT)) {
+      double firstYearFraction =
+          scheduleUnadjusted.getPeriod(couponIndex).yearFraction(product.getDayCount(), scheduleUnadjusted);
       ExpandedCapitalIndexedBond expanded = product.expand();
       RateObservation obs = expanded.getPeriodicPayments().get(couponIndex).getRateObservation();
       LocalDateDoubleTimeSeries ts = ratesProvider.priceIndexValues(product.getRateCalculation().getIndex()).getFixings();
@@ -647,7 +647,7 @@ public class DiscountingCapitalIndexedBondProductPricer {
       double u = Math.sqrt(1d / 1.03);
       double a = indexRatio * Math.pow(u, nbMonth / 6d);
       double firstCashFlow = firstYearFraction * realRate * indexRatio * couponPerYear;
-      double rs = ratioPeriodToNextCoupon(expanded.getPeriodicPayments().get(couponIndex), settlementDate);
+      double rs = ratioPeriodToNextCoupon(scheduleUnadjusted.getPeriod(couponIndex), settlementDate);
       if (nbCoupon == 1) {
         return (realRate + 1d) * a / u * Math.pow(u * v, rs);
       } else {
@@ -661,9 +661,10 @@ public class DiscountingCapitalIndexedBondProductPricer {
       }
     }
     if (yieldConvention.equals(YieldConvention.UK_IL_BOND)) {
-      ExpandedCapitalIndexedBond expanded = product.expand();
+      double firstYearFraction =
+          scheduleUnadjusted.getPeriod(couponIndex).yearFraction(product.getDayCount(), scheduleUnadjusted);
       double indexRatio = indexRatio(product, ratesProvider, settlementDate);
-      double rs = ratioPeriodToNextCoupon(expanded.getPeriodicPayments().get(couponIndex), settlementDate);
+      double rs = ratioPeriodToNextCoupon(scheduleUnadjusted.getPeriod(couponIndex), settlementDate);
       double firstCashFlow = realRate * indexRatio * firstYearFraction * couponPerYear;
       if (nbCoupon == 1) {
         return Math.pow(v, rs) * (firstCashFlow + 1d);
@@ -678,27 +679,19 @@ public class DiscountingCapitalIndexedBondProductPricer {
     }
     if (yieldConvention.equals(YieldConvention.JAPAN_IL_SIMPLE)) {
       LocalDate maturityDate = product.getPeriodicSchedule().getEndDate();
-      double cpnRate = coupon.get(0);
       double maturity = product.getDayCount().relativeYearFraction(settlementDate, maturityDate);
-      double cleanPrice = (1d + cpnRate * maturity) / (1d + yield * maturity);
+      double cleanPrice = (1d + realRate * couponPerYear * maturity) / (1d + yield * maturity);
       return dirtyRealPriceFromCleanRealPrice(product, settlementDate, cleanPrice);
     }
     if (yieldConvention.equals(YieldConvention.JAPAN_IL_COMPOUND)) {
       ExpandedCapitalIndexedBond expanded = product.expand();
       double pvAtFirstCoupon = 0d;
-      int pow = 0;
-      double factorToNext = factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate);
       for (int loopcpn = 0; loopcpn < nbCoupon; loopcpn++) {
-        CapitalIndexedBondPaymentPeriod period = expanded.getPeriodicPayments().get(loopcpn);
-        if ((product.getExCouponPeriod().getDays() != 0 && !settlementDate.isAfter(period.getDetachmentDate())) ||
-            (product.getExCouponPeriod().getDays() == 0 && period.getPaymentDate().isAfter(settlementDate))) {
-          double indexRatio = indexRatio(product, ratesProvider, period.getPaymentDate());
-          pvAtFirstCoupon += period.getRealCoupon() * Math.pow(v, pow) * indexRatio;
-          ++pow;
-        }
+        CapitalIndexedBondPaymentPeriod period = expanded.getPeriodicPayments().get(loopcpn + couponIndex);
+        pvAtFirstCoupon += period.getRealCoupon() * Math.pow(v, loopcpn);
       }
-      pvAtFirstCoupon += Math.pow(v, pow - 1) *
-          indexRatio(product, ratesProvider, expanded.getNominalPayment().getPaymentDate());
+      pvAtFirstCoupon += Math.pow(v, nbCoupon - 1);
+      double factorToNext = factorToNextCoupon(scheduleUnadjusted, product.getDayCount(), settlementDate);
       return pvAtFirstCoupon * Math.pow(v, factorToNext);
     }
     throw new IllegalArgumentException(
@@ -1199,13 +1192,16 @@ public class DiscountingCapitalIndexedBondProductPricer {
     double realCoupon = product.getRateCalculation().getGearing().orElse(ValueSchedule.ALWAYS_1)
         .resolveValues(scheduleAdjusted.getPeriods()).get(couponIndex);
     double couponPerYear = product.getPeriodicSchedule().getFrequency().eventsPerYear();
-    double accruedInterest = product.getDayCount()
-        .yearFraction(previousAccrualDate, settlementDate, scheduleUnadjusted) * realCoupon * couponPerYear * notional;
+    DayCount dayCount = product.getYieldConvention().equals(YieldConvention.JAPAN_IL_COMPOUND) ||
+        product.getYieldConvention().equals(YieldConvention.JAPAN_IL_SIMPLE) ?
+        DayCounts.ACT_365F : product.getDayCount();
+    double accruedInterest = dayCount.yearFraction(previousAccrualDate, settlementDate, scheduleUnadjusted)
+        * realCoupon * couponPerYear * notional;
     DaysAdjustment exCouponDays = product.getExCouponPeriod();
     double result = 0d;
     if (exCouponDays.getDays() != 0 && !settlementDate.isBefore(exCouponDays.adjust(paymentDate))) {
       result = accruedInterest - notional * realCoupon * couponPerYear *
-          schedulePeriod.yearFraction(product.getDayCount(), scheduleUnadjusted);
+          schedulePeriod.yearFraction(dayCount, scheduleUnadjusted);
     } else {
       result = accruedInterest;
     }
@@ -1213,9 +1209,10 @@ public class DiscountingCapitalIndexedBondProductPricer {
   }
 
   //-------------------------------------------------------------------------
-  private double ratioPeriodToNextCoupon(CapitalIndexedBondPaymentPeriod period, LocalDate settlementDate) {
-    double nbDayToSpot = DAYS.between(settlementDate, period.getUnadjustedEndDate());
-    double nbDaysPeriod = DAYS.between(period.getUnadjustedStartDate(), period.getUnadjustedEndDate());
+  private double ratioPeriodToNextCoupon(SchedulePeriod schedulePeriodUnadjusted, LocalDate settlementDate) {
+    double nbDayToSpot = DAYS.between(settlementDate, schedulePeriodUnadjusted.getUnadjustedEndDate());
+    double nbDaysPeriod = DAYS.between(
+        schedulePeriodUnadjusted.getUnadjustedStartDate(), schedulePeriodUnadjusted.getUnadjustedEndDate());
     return nbDayToSpot / nbDaysPeriod;
   }
 
