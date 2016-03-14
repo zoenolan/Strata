@@ -24,6 +24,8 @@ import org.testng.annotations.Test;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
+import com.opengamma.strata.collect.array.DoubleArray;
+import com.opengamma.strata.collect.array.DoubleMatrix;
 import com.opengamma.strata.market.curve.CurveCurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.FxOptionSensitivity;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
@@ -55,17 +57,18 @@ public class BlackFxVanillaOptionProductPricerTest {
   private static final RatesProvider RATES_PROVIDER_AFTER =
       RatesProviderFxDataSets.createProviderEURUSD(VAL_DATE_AFTER);
 
-  private static final double[] TIME_TO_EXPIRY = new double[] {0.01, 0.252, 0.501, 1.0, 2.0, 5.0 };
-  private static final double[] ATM = {0.175, 0.185, 0.18, 0.17, 0.16, 0.16 };
-  private static final double[] DELTA = new double[] {0.10, 0.25 };
-  private static final double[][] RISK_REVERSAL = new double[][] {
+  private static final String NAME = "smileEurUsd";
+  private static final DoubleArray TIME_TO_EXPIRY = DoubleArray.of(0.01, 0.252, 0.501, 1.0, 2.0, 5.0);
+  private static final DoubleArray ATM = DoubleArray.of(0.175, 0.185, 0.18, 0.17, 0.16, 0.16);
+  private static final DoubleArray DELTA = DoubleArray.of(0.10, 0.25);
+  private static final DoubleMatrix RISK_REVERSAL = DoubleMatrix.ofUnsafe(new double[][] {
       {-0.010, -0.0050}, {-0.011, -0.0060}, {-0.012, -0.0070},
-      {-0.013, -0.0080}, {-0.014, -0.0090}, {-0.014, -0.0090}};
-  private static final double[][] STRANGLE = new double[][] {
+    {-0.013, -0.0080 }, {-0.014, -0.0090 }, {-0.014, -0.0090 } });
+  private static final DoubleMatrix STRANGLE = DoubleMatrix.ofUnsafe(new double[][] {
       {0.0300, 0.0100}, {0.0310, 0.0110}, {0.0320, 0.0120},
-      {0.0330, 0.0130}, {0.0340, 0.0140}, {0.0340, 0.0140}};
-  private static final SmileDeltaTermStructureParametersStrikeInterpolation SMILE_TERM =
-      new SmileDeltaTermStructureParametersStrikeInterpolation(TIME_TO_EXPIRY, DELTA, ATM, RISK_REVERSAL, STRANGLE);
+    {0.0330, 0.0130 }, {0.0340, 0.0140 }, {0.0340, 0.0140 } });
+  private static final InterpolatedSmileDeltaTermStructureStrikeInterpolation SMILE_TERM =
+      InterpolatedSmileDeltaTermStructureStrikeInterpolation.of(NAME, TIME_TO_EXPIRY, DELTA, ATM, RISK_REVERSAL, STRANGLE);
   private static final CurrencyPair CURRENCY_PAIR = CurrencyPair.of(EUR, USD);
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER =
       BlackVolatilitySmileFxProvider.of(SMILE_TERM, CURRENCY_PAIR, ACT_365F, VAL_DATETIME);
@@ -119,8 +122,8 @@ public class BlackFxVanillaOptionProductPricerTest {
     double df = RATES_PROVIDER.discountFactor(USD, PAYMENT_DATE);
     double forward = PRICER.getDiscountingFxSingleProductPricer()
         .forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER).fxRate(CURRENCY_PAIR);
-    double volHigh = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
-    double volLow = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_LOW, forward);
+    double volHigh = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double volLow = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_LOW, forward);
     double expectedPriceCallOtm =
         df * BlackFormulaRepository.price(forward, STRIKE_RATE_HIGH, timeToExpiry, volHigh, true);
     double expectedPricePutOtm =
@@ -189,7 +192,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     double dfFor = RATES_PROVIDER.discountFactor(EUR, PAYMENT_DATE);
     double forward = PRICER.getDiscountingFxSingleProductPricer().forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER)
         .fxRate(CURRENCY_PAIR);
-    double vol = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double vol = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
     double expectedDeltaCall = dfFor * BlackFormulaRepository.delta(forward, STRIKE_RATE_HIGH, timeToExpiry, vol, true);
     double expectedDeltaPut = dfFor * BlackFormulaRepository.delta(forward, STRIKE_RATE_HIGH, timeToExpiry, vol, false);
     double expectedPvDeltaCall = -NOTIONAL * dfFor
@@ -292,7 +295,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     double dfFor = RATES_PROVIDER.discountFactor(EUR, PAYMENT_DATE);
     double forward = PRICER.getDiscountingFxSingleProductPricer().forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER)
         .fxRate(CURRENCY_PAIR);
-    double vol = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double vol = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
     double expectedGamma = dfFor * dfFor / dfDom *
         BlackFormulaRepository.gamma(forward, STRIKE_RATE_HIGH, timeToExpiry, vol);
     double expectedPvGamma = -NOTIONAL * dfFor * dfFor / dfDom *
@@ -329,7 +332,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     double dfDom = RATES_PROVIDER.discountFactor(USD, PAYMENT_DATE);
     double forward = PRICER.getDiscountingFxSingleProductPricer().forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER)
         .fxRate(CURRENCY_PAIR);
-    double vol = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double vol = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
     double expectedVega = dfDom * BlackFormulaRepository.vega(forward, STRIKE_RATE_HIGH, timeToExpiry, vol);
     double expectedPvVega = -NOTIONAL * dfDom *
         BlackFormulaRepository.vega(forward, STRIKE_RATE_HIGH, timeToExpiry, vol);
@@ -365,7 +368,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     double df = RATES_PROVIDER.discountFactor(USD, PAYMENT_DATE);
     double forward = PRICER.getDiscountingFxSingleProductPricer().forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER)
         .fxRate(CURRENCY_PAIR);
-    double vol = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double vol = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
     FxOptionSensitivity expected = FxOptionSensitivity.of(CURRENCY_PAIR, EXPIRY, STRIKE_RATE_HIGH, forward, USD,
         -NOTIONAL * df * BlackFormulaRepository.vega(forward, STRIKE_RATE_HIGH, timeToExpiry, vol));
     assertTrue(computedCall.build().equalWithTolerance(expected.build(), NOTIONAL * TOL));
@@ -392,7 +395,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     double dfDom = RATES_PROVIDER.discountFactor(USD, PAYMENT_DATE);
     double forward = PRICER.getDiscountingFxSingleProductPricer().forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER)
         .fxRate(CURRENCY_PAIR);
-    double vol = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double vol = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
     double expectedTheta = dfDom * BlackFormulaRepository.driftlessTheta(forward, STRIKE_RATE_HIGH, timeToExpiry, vol);
     assertEquals(theta, expectedTheta, TOL);
     double expectedPvTheta = -NOTIONAL * dfDom *
@@ -422,7 +425,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     double timeToExpiry = VOL_PROVIDER.relativeTime(EXPIRY);
     double forward = PRICER.getDiscountingFxSingleProductPricer().forwardFxRate(FX_PRODUCT_HIGH, RATES_PROVIDER)
         .fxRate(CURRENCY_PAIR);
-    double expected = SMILE_TERM.getVolatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
+    double expected = SMILE_TERM.volatility(timeToExpiry, STRIKE_RATE_HIGH, forward);
     assertEquals(computedCall, expected);
     assertEquals(computedPut, expected);
   }
