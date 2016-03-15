@@ -69,6 +69,7 @@ public class BlackFxVanillaOptionProductPricerTest {
     {0.0330, 0.0130 }, {0.0340, 0.0140 }, {0.0340, 0.0140 } });
   private static final InterpolatedSmileDeltaTermStructureStrikeInterpolation SMILE_TERM =
       InterpolatedSmileDeltaTermStructureStrikeInterpolation.of(NAME, TIME_TO_EXPIRY, DELTA, ATM, RISK_REVERSAL, STRANGLE);
+
   private static final CurrencyPair CURRENCY_PAIR = CurrencyPair.of(EUR, USD);
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER =
       BlackVolatilitySmileFxProvider.of(SMILE_TERM, CURRENCY_PAIR, ACT_365F, VAL_DATETIME);
