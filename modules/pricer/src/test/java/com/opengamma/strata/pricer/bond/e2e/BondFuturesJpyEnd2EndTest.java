@@ -54,9 +54,9 @@ import com.opengamma.strata.product.TradeInfo;
 import com.opengamma.strata.product.UnitSecurity;
 import com.opengamma.strata.product.bond.BondFuture;
 import com.opengamma.strata.product.bond.FixedCouponBond;
+import com.opengamma.strata.product.bond.FixedCouponBondYieldConvention;
 import com.opengamma.strata.product.bond.ResolvedBondFuture;
 import com.opengamma.strata.product.bond.ResolvedBondFutureTrade;
-import com.opengamma.strata.product.bond.YieldConvention;
 
 /**
  * End to end test on JPY-dominated trades.
@@ -80,7 +80,7 @@ public class BondFuturesJpyEnd2EndTest {
   private static final StandardId ISSUER_ID = StandardId.of("OG-Ticker", "GOVT");
   private static final LegalEntityGroup GROUP_ISSUER = LegalEntityGroup.of("GOVT");
   private static final BondGroup GROUP_REPO = BondGroup.of("GOVT BONDS");
-  private static final YieldConvention YIELD_CONVENTION = YieldConvention.JAPAN_SIMPLE;
+  private static final FixedCouponBondYieldConvention YIELD_CONVENTION = FixedCouponBondYieldConvention.JAPAN_SIMPLE;
   /** Notional of underlying bond */
   private static final HolidayCalendarId CALENDAR = HolidayCalendarIds.JPTO;
   private static final DaysAdjustment SETTLEMENT_DAYS = DaysAdjustment.ofBusinessDays(3, CALENDAR);
@@ -144,7 +144,7 @@ public class BondFuturesJpyEnd2EndTest {
   private static final LocalDate FIRST_NOTICE_DATE_SEP = LAST_TRADE_ADJUST.adjust(LAST_DELIVERY_DATE_SEP, REF_DATA);
   private static final LocalDate LAST_NOTICE_DATE_SEP = LAST_TRADE_ADJUST.adjust(LAST_DELIVERY_DATE_SEP, REF_DATA);
   private static final ResolvedBondFuture FUTURE_PRODUCT_SEP = BondFuture.builder()
-      .conversionFactor(CF_SEP)
+      .conversionFactors(CF_SEP)
       .deliveryBasket(UND_BOND_SECURITY_SEP)
       .firstNoticeDate(FIRST_NOTICE_DATE_SEP)
       .lastNoticeDate(LAST_NOTICE_DATE_SEP)
@@ -177,7 +177,7 @@ public class BondFuturesJpyEnd2EndTest {
   private static final LocalDate FIRST_NOTICE_DATE_JUN = LAST_TRADE_ADJUST.adjust(LAST_DELIVERY_DATE_JUN, REF_DATA);
   private static final LocalDate LAST_NOTICE_DATE_JUN = LAST_TRADE_ADJUST.adjust(LAST_DELIVERY_DATE_JUN, REF_DATA);
   private static final ResolvedBondFuture FUTURE_PRODUCT_JUN = BondFuture.builder()
-      .conversionFactor(CF_JUN)
+      .conversionFactors(CF_JUN)
       .deliveryBasket(UND_BOND_SECURITY_JUN)
       .firstNoticeDate(FIRST_NOTICE_DATE_JUN)
       .lastNoticeDate(LAST_NOTICE_DATE_JUN)
@@ -205,7 +205,7 @@ public class BondFuturesJpyEnd2EndTest {
   private static final LocalDate FIRST_NOTICE_DATE_MAR = LAST_TRADE_ADJUST.adjust(LAST_DELIVERY_DATE_MAR, REF_DATA);
   private static final LocalDate LAST_NOTICE_DATE_MAR = LAST_TRADE_ADJUST.adjust(LAST_DELIVERY_DATE_MAR, REF_DATA);
   private static final ResolvedBondFuture FUTURE_PRODUCT_MAR = BondFuture.builder()
-      .conversionFactor(CF_MAR)
+      .conversionFactors(CF_MAR)
       .deliveryBasket(UND_BOND_SECURITY)
       .firstNoticeDate(FIRST_NOTICE_DATE_MAR)
       .lastNoticeDate(LAST_NOTICE_DATE_MAR)

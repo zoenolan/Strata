@@ -34,7 +34,7 @@ import com.opengamma.strata.product.bond.BondFutureOption;
 import com.opengamma.strata.product.bond.BondFutureOptionTrade;
 import com.opengamma.strata.product.bond.BondFutureTrade;
 import com.opengamma.strata.product.bond.FixedCouponBond;
-import com.opengamma.strata.product.bond.YieldConvention;
+import com.opengamma.strata.product.bond.FixedCouponBondYieldConvention;
 import com.opengamma.strata.product.common.FutureOptionPremiumStyle;
 
 /**
@@ -45,7 +45,7 @@ public final class BondDataSets {
   //      =====     Fixed coupon bonds, bond future, USD   =====      
   // Fixed coupon bonds
   private static final StandardId ISSUER_ID_USD = StandardId.of("OG-Ticker", "GOVT1");
-  private static final YieldConvention YIELD_CONVENTION_USD = YieldConvention.US_STREET;
+  private static final FixedCouponBondYieldConvention YIELD_CONVENTION_USD = FixedCouponBondYieldConvention.US_STREET;
   /** Notional of underlying bond */
   public static final double NOTIONAL_USD = 100000.0;
   private static final HolidayCalendarId CALENDAR_USD = HolidayCalendarIds.SAT_SUN;
@@ -99,7 +99,7 @@ public final class BondDataSets {
   private static final LocalDate LAST_NOTICE_DATE_USD = LocalDate.of(2011, 10, 4);
   /** Bond future product */
   public static final BondFuture FUTURE_PRODUCT_USD = BondFuture.builder()
-      .conversionFactor(CONVERSION_FACTOR_USD)
+      .conversionFactors(CONVERSION_FACTOR_USD)
       .deliveryBasket(BOND_SECURITY_LINK_USD)
       .firstNoticeDate(FIRST_NOTICE_DATE_USD)
       .lastNoticeDate(LAST_NOTICE_DATE_USD)
@@ -116,7 +116,7 @@ public final class BondDataSets {
   public static final long QUANTITY_USD = 1234l;
   /** Bond future trade */
   public static final BondFutureTrade FUTURE_TRADE_USD = BondFutureTrade.builder()
-      .initialPrice(1.1d)
+      .price(1.1d)
       .quantity(QUANTITY_USD)
       .securityLink(FUTURE_SECURITY_LINK_USD)
       .tradeInfo(TRADE_INFO_USD)
@@ -127,7 +127,7 @@ public final class BondDataSets {
   //      =====     Fixed coupon bonds, bond future, EUR   =====      
   // bond basket
   private static final StandardId ISSUER_ID_EUR = StandardId.of("OG-Ticker", "GOVT2");
-  private static final YieldConvention YIELD_CONVENTION_EUR = YieldConvention.GERMAN_BONDS;
+  private static final FixedCouponBondYieldConvention YIELD_CONVENTION_EUR = FixedCouponBondYieldConvention.GERMAN_BONDS;
   /** Notional of underlying bond */
   public static final double NOTIONAL_EUR = 100000d;
   private static final HolidayCalendarId CALENDAR_EUR = HolidayCalendarIds.EUTA;
@@ -173,7 +173,7 @@ public final class BondDataSets {
   private static final LocalDate FIRST_NOTICE_DATE_EUR = LocalDate.of(2014, 6, 6);
   private static final LocalDate LAST_NOTICE_DATE_EUR = LocalDate.of(2014, 6, 6);
   private static final BondFuture FUTURE_PRODUCT_EUR = BondFuture.builder()
-      .conversionFactor(CONVERSION_FACTOR_EUR)
+      .conversionFactors(CONVERSION_FACTOR_EUR)
       .deliveryBasket(SECURITY_LINK_EUR)
       .firstNoticeDate(FIRST_NOTICE_DATE_EUR)
       .lastNoticeDate(LAST_NOTICE_DATE_EUR)
@@ -219,7 +219,7 @@ public final class BondDataSets {
       .resolved(UnitSecurity.builder(FUTURE_OPTION_PRODUCT_EUR_115).standardId(OPTION_SECURITY_ID).build());
   /** Bond future option trade */
   public static final BondFutureOptionTrade FUTURE_OPTION_TRADE_EUR = BondFutureOptionTrade.builder()
-      .initialPrice(0.01)
+      .price(0.01)
       .quantity(QUANTITY_EUR)
       .securityLink(OPTION_SECURITY_LINK)
       .tradeInfo(TRADE_INFO)

@@ -52,7 +52,7 @@ import com.opengamma.strata.product.ResolvedProduct;
  * whereas the nominal payment is defined by {@link Payment}.
  * <p>
  * The legal entity of this fixed coupon bond is identified by {@link StandardId}.
- * The enum, {@link YieldConvention}, specifies the yield computation convention.
+ * The enum, {@link FixedCouponBondYieldConvention}, specifies the yield computation convention.
  * <p>
  * A {@code ResolvedFixedCouponBond} is bound to data that changes over time, such as holiday calendars.
  * If the data changes, such as the addition of a new holiday, the resolved form will not be updated.
@@ -93,16 +93,16 @@ public final class ResolvedFixedCouponBond
   @PropertyDefinition(validate = "notNull")
   private final RollConvention rollConvention;
   /**
-   * The fixed coupon rate. 
+   * The fixed coupon rate.
    * <p>
    * The periodic payments are based on this fixed coupon rate.
    */
   @PropertyDefinition
   private final double fixedRate;
   /**
-   * The day count convention applicable. 
+   * The day count convention applicable.
    * <p>
-   * The conversion from dates to a numerical value is made based on this day count. 
+   * The conversion from dates to a numerical value is made based on this day count.
    * For the fixed bond, the day count convention is used to compute accrued interest.
    * <p>
    * Note that the year fraction of a coupon payment is computed based on the unadjusted
@@ -113,24 +113,24 @@ public final class ResolvedFixedCouponBond
   /**
    * Yield convention.
    * <p>
-   * The convention defines how to convert from yield to price and inversely.  
+   * The convention defines how to convert from yield to price and inversely.
    */
   @PropertyDefinition(validate = "notNull")
-  private final YieldConvention yieldConvention;
+  private final FixedCouponBondYieldConvention yieldConvention;
   /**
    * The legal entity identifier.
    * <p>
-   * This identifier is used for the legal entity which issues the fixed coupon bond product. 
+   * This identifier is used for the legal entity which issues the fixed coupon bond product.
    */
   @PropertyDefinition(validate = "notNull")
   private final StandardId legalEntityId;
   /**
-   * The number of days between valuation date and settlement date. 
+   * The number of days between valuation date and settlement date.
    * <p>
-   * This is used to compute clean price. 
+   * This is used to compute clean price.
    * The clean price is the relative price to be paid at the standard settlement date in exchange for the bond.
    * <p>
-   * It is usually one business day for US treasuries and UK Gilts and three days for Euroland government bonds. 
+   * It is usually one business day for US treasuries and UK Gilts and three days for Euroland government bonds.
    */
   @PropertyDefinition(validate = "notNull")
   private final DaysAdjustment settlementDateOffset;
@@ -312,7 +312,7 @@ public final class ResolvedFixedCouponBond
       RollConvention rollConvention,
       double fixedRate,
       DayCount dayCount,
-      YieldConvention yieldConvention,
+      FixedCouponBondYieldConvention yieldConvention,
       StandardId legalEntityId,
       DaysAdjustment settlementDateOffset) {
     JodaBeanUtils.notNull(nominalPayment, "nominalPayment");
@@ -428,7 +428,7 @@ public final class ResolvedFixedCouponBond
    * The convention defines how to convert from yield to price and inversely.
    * @return the value of the property, not null
    */
-  public YieldConvention getYieldConvention() {
+  public FixedCouponBondYieldConvention getYieldConvention() {
     return yieldConvention;
   }
 
@@ -562,8 +562,8 @@ public final class ResolvedFixedCouponBond
     /**
      * The meta-property for the {@code yieldConvention} property.
      */
-    private final MetaProperty<YieldConvention> yieldConvention = DirectMetaProperty.ofImmutable(
-        this, "yieldConvention", ResolvedFixedCouponBond.class, YieldConvention.class);
+    private final MetaProperty<FixedCouponBondYieldConvention> yieldConvention = DirectMetaProperty.ofImmutable(
+        this, "yieldConvention", ResolvedFixedCouponBond.class, FixedCouponBondYieldConvention.class);
     /**
      * The meta-property for the {@code legalEntityId} property.
      */
@@ -688,7 +688,7 @@ public final class ResolvedFixedCouponBond
      * The meta-property for the {@code yieldConvention} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<YieldConvention> yieldConvention() {
+    public MetaProperty<FixedCouponBondYieldConvention> yieldConvention() {
       return yieldConvention;
     }
 
@@ -757,7 +757,7 @@ public final class ResolvedFixedCouponBond
     private RollConvention rollConvention;
     private double fixedRate;
     private DayCount dayCount;
-    private YieldConvention yieldConvention;
+    private FixedCouponBondYieldConvention yieldConvention;
     private StandardId legalEntityId;
     private DaysAdjustment settlementDateOffset;
 
@@ -833,7 +833,7 @@ public final class ResolvedFixedCouponBond
           this.dayCount = (DayCount) newValue;
           break;
         case -1895216418:  // yieldConvention
-          this.yieldConvention = (YieldConvention) newValue;
+          this.yieldConvention = (FixedCouponBondYieldConvention) newValue;
           break;
         case 866287159:  // legalEntityId
           this.legalEntityId = (StandardId) newValue;
@@ -986,7 +986,7 @@ public final class ResolvedFixedCouponBond
      * @param yieldConvention  the new value, not null
      * @return this, for chaining, not null
      */
-    public Builder yieldConvention(YieldConvention yieldConvention) {
+    public Builder yieldConvention(FixedCouponBondYieldConvention yieldConvention) {
       JodaBeanUtils.notNull(yieldConvention, "yieldConvention");
       this.yieldConvention = yieldConvention;
       return this;

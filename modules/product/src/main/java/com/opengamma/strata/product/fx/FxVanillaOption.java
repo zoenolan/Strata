@@ -109,16 +109,6 @@ public final class FxVanillaOption
     return expiryDate.atTime(expiryTime).atZone(expiryZone);
   }
 
-  //
-  //  /**
-  //   * Gets the currency on which the payoff occurs. 
-  //   * 
-  //   * @return the payoff currency
-  //   */
-  //  public Currency getPayoffCurrency() {
-  //    return underlying.getCounterCurrencyAmount().getCurrency();
-  //  }
-
   //-------------------------------------------------------------------------
   @Override
   public ResolvedFxVanillaOption resolve(ReferenceData refData) {
