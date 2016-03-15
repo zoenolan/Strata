@@ -47,10 +47,25 @@ public final class FxSingleBarrierOption
   private final Payment rebate;
 
   //-------------------------------------------------------------------------
+  /**
+   * Obtains FX single barrier option with rebate. 
+   * 
+   * @param underlyingOption  the underlying FX vanilla option
+   * @param barrier  the barrier
+   * @param rebate  the rebate
+   * @return the instance
+   */
   public static FxSingleBarrierOption of(FxVanillaOption underlyingOption, Barrier barrier, Payment rebate) {
     return new FxSingleBarrierOption(underlyingOption, barrier, rebate);
   }
 
+  /**
+   * Obtains FX single barrier option without rebate. 
+   * 
+   * @param underlyingOption  the underlying FX vanilla option
+   * @param barrier  the barrier
+   * @return the instance
+   */
   public static FxSingleBarrierOption of(FxVanillaOption underlyingOption, Barrier barrier) {
     return new FxSingleBarrierOption(underlyingOption, barrier, null);
   }
