@@ -20,7 +20,7 @@ import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
-import com.opengamma.strata.basics.currency.Payment;
+import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.market.ReferenceData;
 import com.opengamma.strata.basics.market.Resolvable;
 import com.opengamma.strata.collect.ArgChecker;
@@ -37,14 +37,19 @@ public final class FxSingleBarrierOption
   private final FxVanillaOption underlyingOption;
   /**
    * The barrier description.
+   * <p>
+   * The barrier level stored in this field must be represented based on the direction of the currency pair in the 
+   * underlying FX transaction. 
    */
   @PropertyDefinition(validate = "notNull")
   private final Barrier barrier;
   /**
    * The amount paid back to the option holder in case the option expires inactive.
+   * <p>
+   * This is the notional amount represented in one of the currency pair. 
    */
   @PropertyDefinition(get = "optional")
-  private final Payment rebate;
+  private final CurrencyAmount rebate;
 
   //-------------------------------------------------------------------------
   /**
@@ -55,7 +60,7 @@ public final class FxSingleBarrierOption
    * @param rebate  the rebate
    * @return the instance
    */
-  public static FxSingleBarrierOption of(FxVanillaOption underlyingOption, Barrier barrier, Payment rebate) {
+  public static FxSingleBarrierOption of(FxVanillaOption underlyingOption, Barrier barrier, CurrencyAmount rebate) {
     return new FxSingleBarrierOption(underlyingOption, barrier, rebate);
   }
 
@@ -74,9 +79,9 @@ public final class FxSingleBarrierOption
   @ImmutableValidator
   private void validate() {
     if (rebate != null) {
-      ArgChecker.isTrue(underlyingOption.getUnderlying().getPaymentDate().isEqual(rebate.getDate()),
-          "rebate payment must be equal to underlying FX payment");
       ArgChecker.isTrue(rebate.getAmount() > 0d, "rebate must be positive");
+      ArgChecker.isTrue(underlyingOption.getUnderlying().getCurrencyPair().contains(rebate.getCurrency()),
+          "The rebate currency must be one of underlying currency pair");
     }
   }
 
@@ -108,7 +113,7 @@ public final class FxSingleBarrierOption
   private FxSingleBarrierOption(
       FxVanillaOption underlyingOption,
       Barrier barrier,
-      Payment rebate) {
+      CurrencyAmount rebate) {
     JodaBeanUtils.notNull(underlyingOption, "underlyingOption");
     JodaBeanUtils.notNull(barrier, "barrier");
     this.underlyingOption = underlyingOption;
@@ -144,6 +149,9 @@ public final class FxSingleBarrierOption
   //-----------------------------------------------------------------------
   /**
    * Gets the barrier description.
+   * <p>
+   * The barrier level stored in this field must be represented based on the direction of the currency pair in the
+   * underlying FX transaction.
    * @return the value of the property, not null
    */
   public Barrier getBarrier() {
@@ -153,9 +161,11 @@ public final class FxSingleBarrierOption
   //-----------------------------------------------------------------------
   /**
    * Gets the amount paid back to the option holder in case the option expires inactive.
+   * <p>
+   * This is the notional amount represented in one of the currency pair.
    * @return the optional value of the property, not null
    */
-  public Optional<Payment> getRebate() {
+  public Optional<CurrencyAmount> getRebate() {
     return Optional.ofNullable(rebate);
   }
 
@@ -217,8 +227,8 @@ public final class FxSingleBarrierOption
     /**
      * The meta-property for the {@code rebate} property.
      */
-    private final MetaProperty<Payment> rebate = DirectMetaProperty.ofImmutable(
-        this, "rebate", FxSingleBarrierOption.class, Payment.class);
+    private final MetaProperty<CurrencyAmount> rebate = DirectMetaProperty.ofImmutable(
+        this, "rebate", FxSingleBarrierOption.class, CurrencyAmount.class);
     /**
      * The meta-properties.
      */
@@ -283,7 +293,7 @@ public final class FxSingleBarrierOption
      * The meta-property for the {@code rebate} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<Payment> rebate() {
+    public MetaProperty<CurrencyAmount> rebate() {
       return rebate;
     }
 
@@ -320,7 +330,7 @@ public final class FxSingleBarrierOption
 
     private FxVanillaOption underlyingOption;
     private Barrier barrier;
-    private Payment rebate;
+    private CurrencyAmount rebate;
 
     /**
      * Restricted constructor.
@@ -353,7 +363,7 @@ public final class FxSingleBarrierOption
           this.barrier = (Barrier) newValue;
           break;
         case -934952029:  // rebate
-          this.rebate = (Payment) newValue;
+          this.rebate = (CurrencyAmount) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
