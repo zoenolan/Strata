@@ -46,6 +46,9 @@ import com.opengamma.strata.product.Product;
  * For a no touch option, the option holder receives one unit of base/counter currency if the exchange spot rate does not  
  * touch a given barrier level at any time until expiry, and the payoff is zero otherwise. 
  * <p>
+ * Note that we assume the payment date of the payoff is specified in the contract and the payment is not made before 
+ * the option expires. Thus "one-touch at hit" option is not considered in this class. 
+ * <p>
  * For example, a one touch option on an EUR/USD exchange rate with barrier 1.4 and EUR delivery pays one unit of EUR 
  * if the spot touches 1.4 until expiry.
  */
@@ -73,7 +76,12 @@ public class FxOneTouchOption
    */
   @PropertyDefinition(validate = "ArgChecker.notNegative")
   private final double notional;
-
+  /**
+   * The date that the payoff settles.
+   * <p>
+   * This date is typically a valid business day, however the {@code businessDayAdjustment}
+   * property may be used to adjust it.
+   */
   @PropertyDefinition(validate = "notNull")
   private final LocalDate paymentDate;
   /**
@@ -81,13 +89,6 @@ public class FxOneTouchOption
    */
   @PropertyDefinition(validate = "notNull")
   private final ZonedDateTime expiry;
-  /**
-   * The payment date adjustment, optional.
-   * <p>
-   * If present, the adjustment will be applied to the payment date.
-   */
-  @PropertyDefinition(get = "optional")
-  private final BusinessDayAdjustment paymentDateAdjustment;
   /**
    * The currency pair.
    * <p>
@@ -103,6 +104,13 @@ public class FxOneTouchOption
    */
   @PropertyDefinition(validate = "notNull")
   private final Barrier barrier;
+  /**
+   * The payment date adjustment, optional.
+   * <p>
+   * If present, the adjustment will be applied to the payment date.
+   */
+  @PropertyDefinition(get = "optional")
+  private final BusinessDayAdjustment paymentDateAdjustment;
 
   //-------------------------------------------------------------------------
   @ImmutableValidator
@@ -162,9 +170,9 @@ public class FxOneTouchOption
     this.notional = builder.notional;
     this.paymentDate = builder.paymentDate;
     this.expiry = builder.expiry;
-    this.paymentDateAdjustment = builder.paymentDateAdjustment;
     this.currencyPair = builder.currencyPair;
     this.barrier = builder.barrier;
+    this.paymentDateAdjustment = builder.paymentDateAdjustment;
     validate();
   }
 
@@ -217,7 +225,10 @@ public class FxOneTouchOption
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the paymentDate.
+   * Gets the date that the payoff settles.
+   * <p>
+   * This date is typically a valid business day, however the {@code businessDayAdjustment}
+   * property may be used to adjust it.
    * @return the value of the property, not null
    */
   public LocalDate getPaymentDate() {
@@ -231,17 +242,6 @@ public class FxOneTouchOption
    */
   public ZonedDateTime getExpiry() {
     return expiry;
-  }
-
-  //-----------------------------------------------------------------------
-  /**
-   * Gets the payment date adjustment, optional.
-   * <p>
-   * If present, the adjustment will be applied to the payment date.
-   * @return the optional value of the property, not null
-   */
-  public Optional<BusinessDayAdjustment> getPaymentDateAdjustment() {
-    return Optional.ofNullable(paymentDateAdjustment);
   }
 
   //-----------------------------------------------------------------------
@@ -269,6 +269,17 @@ public class FxOneTouchOption
 
   //-----------------------------------------------------------------------
   /**
+   * Gets the payment date adjustment, optional.
+   * <p>
+   * If present, the adjustment will be applied to the payment date.
+   * @return the optional value of the property, not null
+   */
+  public Optional<BusinessDayAdjustment> getPaymentDateAdjustment() {
+    return Optional.ofNullable(paymentDateAdjustment);
+  }
+
+  //-----------------------------------------------------------------------
+  /**
    * Returns a builder that allows this bean to be mutated.
    * @return the mutable builder, not null
    */
@@ -288,9 +299,9 @@ public class FxOneTouchOption
           JodaBeanUtils.equal(notional, other.notional) &&
           JodaBeanUtils.equal(paymentDate, other.paymentDate) &&
           JodaBeanUtils.equal(expiry, other.expiry) &&
-          JodaBeanUtils.equal(paymentDateAdjustment, other.paymentDateAdjustment) &&
           JodaBeanUtils.equal(currencyPair, other.currencyPair) &&
-          JodaBeanUtils.equal(barrier, other.barrier);
+          JodaBeanUtils.equal(barrier, other.barrier) &&
+          JodaBeanUtils.equal(paymentDateAdjustment, other.paymentDateAdjustment);
     }
     return false;
   }
@@ -303,9 +314,9 @@ public class FxOneTouchOption
     hash = hash * 31 + JodaBeanUtils.hashCode(notional);
     hash = hash * 31 + JodaBeanUtils.hashCode(paymentDate);
     hash = hash * 31 + JodaBeanUtils.hashCode(expiry);
-    hash = hash * 31 + JodaBeanUtils.hashCode(paymentDateAdjustment);
     hash = hash * 31 + JodaBeanUtils.hashCode(currencyPair);
     hash = hash * 31 + JodaBeanUtils.hashCode(barrier);
+    hash = hash * 31 + JodaBeanUtils.hashCode(paymentDateAdjustment);
     return hash;
   }
 
@@ -328,9 +339,9 @@ public class FxOneTouchOption
     buf.append("notional").append('=').append(JodaBeanUtils.toString(notional)).append(',').append(' ');
     buf.append("paymentDate").append('=').append(JodaBeanUtils.toString(paymentDate)).append(',').append(' ');
     buf.append("expiry").append('=').append(JodaBeanUtils.toString(expiry)).append(',').append(' ');
-    buf.append("paymentDateAdjustment").append('=').append(JodaBeanUtils.toString(paymentDateAdjustment)).append(',').append(' ');
     buf.append("currencyPair").append('=').append(JodaBeanUtils.toString(currencyPair)).append(',').append(' ');
     buf.append("barrier").append('=').append(JodaBeanUtils.toString(barrier)).append(',').append(' ');
+    buf.append("paymentDateAdjustment").append('=').append(JodaBeanUtils.toString(paymentDateAdjustment)).append(',').append(' ');
   }
 
   //-----------------------------------------------------------------------
@@ -369,11 +380,6 @@ public class FxOneTouchOption
     private final MetaProperty<ZonedDateTime> expiry = DirectMetaProperty.ofImmutable(
         this, "expiry", FxOneTouchOption.class, ZonedDateTime.class);
     /**
-     * The meta-property for the {@code paymentDateAdjustment} property.
-     */
-    private final MetaProperty<BusinessDayAdjustment> paymentDateAdjustment = DirectMetaProperty.ofImmutable(
-        this, "paymentDateAdjustment", FxOneTouchOption.class, BusinessDayAdjustment.class);
-    /**
      * The meta-property for the {@code currencyPair} property.
      */
     private final MetaProperty<CurrencyPair> currencyPair = DirectMetaProperty.ofImmutable(
@@ -384,6 +390,11 @@ public class FxOneTouchOption
     private final MetaProperty<Barrier> barrier = DirectMetaProperty.ofImmutable(
         this, "barrier", FxOneTouchOption.class, Barrier.class);
     /**
+     * The meta-property for the {@code paymentDateAdjustment} property.
+     */
+    private final MetaProperty<BusinessDayAdjustment> paymentDateAdjustment = DirectMetaProperty.ofImmutable(
+        this, "paymentDateAdjustment", FxOneTouchOption.class, BusinessDayAdjustment.class);
+    /**
      * The meta-properties.
      */
     private final Map<String, MetaProperty<?>> metaPropertyMap$ = new DirectMetaPropertyMap(
@@ -393,9 +404,9 @@ public class FxOneTouchOption
         "notional",
         "paymentDate",
         "expiry",
-        "paymentDateAdjustment",
         "currencyPair",
-        "barrier");
+        "barrier",
+        "paymentDateAdjustment");
 
     /**
      * Restricted constructor.
@@ -416,12 +427,12 @@ public class FxOneTouchOption
           return paymentDate;
         case -1289159373:  // expiry
           return expiry;
-        case 737375073:  // paymentDateAdjustment
-          return paymentDateAdjustment;
         case 1005147787:  // currencyPair
           return currencyPair;
         case -333143113:  // barrier
           return barrier;
+        case 737375073:  // paymentDateAdjustment
+          return paymentDateAdjustment;
       }
       return super.metaPropertyGet(propertyName);
     }
@@ -483,14 +494,6 @@ public class FxOneTouchOption
     }
 
     /**
-     * The meta-property for the {@code paymentDateAdjustment} property.
-     * @return the meta-property, not null
-     */
-    public final MetaProperty<BusinessDayAdjustment> paymentDateAdjustment() {
-      return paymentDateAdjustment;
-    }
-
-    /**
      * The meta-property for the {@code currencyPair} property.
      * @return the meta-property, not null
      */
@@ -504,6 +507,14 @@ public class FxOneTouchOption
      */
     public final MetaProperty<Barrier> barrier() {
       return barrier;
+    }
+
+    /**
+     * The meta-property for the {@code paymentDateAdjustment} property.
+     * @return the meta-property, not null
+     */
+    public final MetaProperty<BusinessDayAdjustment> paymentDateAdjustment() {
+      return paymentDateAdjustment;
     }
 
     //-----------------------------------------------------------------------
@@ -520,12 +531,12 @@ public class FxOneTouchOption
           return ((FxOneTouchOption) bean).getPaymentDate();
         case -1289159373:  // expiry
           return ((FxOneTouchOption) bean).getExpiry();
-        case 737375073:  // paymentDateAdjustment
-          return ((FxOneTouchOption) bean).paymentDateAdjustment;
         case 1005147787:  // currencyPair
           return ((FxOneTouchOption) bean).getCurrencyPair();
         case -333143113:  // barrier
           return ((FxOneTouchOption) bean).getBarrier();
+        case 737375073:  // paymentDateAdjustment
+          return ((FxOneTouchOption) bean).paymentDateAdjustment;
       }
       return super.propertyGet(bean, propertyName, quiet);
     }
@@ -552,9 +563,9 @@ public class FxOneTouchOption
     private double notional;
     private LocalDate paymentDate;
     private ZonedDateTime expiry;
-    private BusinessDayAdjustment paymentDateAdjustment;
     private CurrencyPair currencyPair;
     private Barrier barrier;
+    private BusinessDayAdjustment paymentDateAdjustment;
 
     /**
      * Restricted constructor.
@@ -572,9 +583,9 @@ public class FxOneTouchOption
       this.notional = beanToCopy.getNotional();
       this.paymentDate = beanToCopy.getPaymentDate();
       this.expiry = beanToCopy.getExpiry();
-      this.paymentDateAdjustment = beanToCopy.paymentDateAdjustment;
       this.currencyPair = beanToCopy.getCurrencyPair();
       this.barrier = beanToCopy.getBarrier();
+      this.paymentDateAdjustment = beanToCopy.paymentDateAdjustment;
     }
 
     //-----------------------------------------------------------------------
@@ -591,12 +602,12 @@ public class FxOneTouchOption
           return paymentDate;
         case -1289159373:  // expiry
           return expiry;
-        case 737375073:  // paymentDateAdjustment
-          return paymentDateAdjustment;
         case 1005147787:  // currencyPair
           return currencyPair;
         case -333143113:  // barrier
           return barrier;
+        case 737375073:  // paymentDateAdjustment
+          return paymentDateAdjustment;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
@@ -620,14 +631,14 @@ public class FxOneTouchOption
         case -1289159373:  // expiry
           this.expiry = (ZonedDateTime) newValue;
           break;
-        case 737375073:  // paymentDateAdjustment
-          this.paymentDateAdjustment = (BusinessDayAdjustment) newValue;
-          break;
         case 1005147787:  // currencyPair
           this.currencyPair = (CurrencyPair) newValue;
           break;
         case -333143113:  // barrier
           this.barrier = (Barrier) newValue;
+          break;
+        case 737375073:  // paymentDateAdjustment
+          this.paymentDateAdjustment = (BusinessDayAdjustment) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -704,7 +715,10 @@ public class FxOneTouchOption
     }
 
     /**
-     * Sets the paymentDate.
+     * Sets the date that the payoff settles.
+     * <p>
+     * This date is typically a valid business day, however the {@code businessDayAdjustment}
+     * property may be used to adjust it.
      * @param paymentDate  the new value, not null
      * @return this, for chaining, not null
      */
@@ -722,18 +736,6 @@ public class FxOneTouchOption
     public Builder expiry(ZonedDateTime expiry) {
       JodaBeanUtils.notNull(expiry, "expiry");
       this.expiry = expiry;
-      return this;
-    }
-
-    /**
-     * Sets the payment date adjustment, optional.
-     * <p>
-     * If present, the adjustment will be applied to the payment date.
-     * @param paymentDateAdjustment  the new value
-     * @return this, for chaining, not null
-     */
-    public Builder paymentDateAdjustment(BusinessDayAdjustment paymentDateAdjustment) {
-      this.paymentDateAdjustment = paymentDateAdjustment;
       return this;
     }
 
@@ -764,6 +766,18 @@ public class FxOneTouchOption
       return this;
     }
 
+    /**
+     * Sets the payment date adjustment, optional.
+     * <p>
+     * If present, the adjustment will be applied to the payment date.
+     * @param paymentDateAdjustment  the new value
+     * @return this, for chaining, not null
+     */
+    public Builder paymentDateAdjustment(BusinessDayAdjustment paymentDateAdjustment) {
+      this.paymentDateAdjustment = paymentDateAdjustment;
+      return this;
+    }
+
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
@@ -784,9 +798,9 @@ public class FxOneTouchOption
       buf.append("notional").append('=').append(JodaBeanUtils.toString(notional)).append(',').append(' ');
       buf.append("paymentDate").append('=').append(JodaBeanUtils.toString(paymentDate)).append(',').append(' ');
       buf.append("expiry").append('=').append(JodaBeanUtils.toString(expiry)).append(',').append(' ');
-      buf.append("paymentDateAdjustment").append('=').append(JodaBeanUtils.toString(paymentDateAdjustment)).append(',').append(' ');
       buf.append("currencyPair").append('=').append(JodaBeanUtils.toString(currencyPair)).append(',').append(' ');
       buf.append("barrier").append('=').append(JodaBeanUtils.toString(barrier)).append(',').append(' ');
+      buf.append("paymentDateAdjustment").append('=').append(JodaBeanUtils.toString(paymentDateAdjustment)).append(',').append(' ');
     }
 
   }

@@ -1,3 +1,8 @@
+/**
+ * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
+ *
+ * Please see distribution for license.
+ */
 package com.opengamma.strata.product.fx;
 
 import java.io.Serializable;
@@ -22,6 +27,22 @@ import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.Payment;
 import com.opengamma.strata.product.ResolvedProduct;
 
+/**
+ * Resolved FX (European) single barrier option. 
+ * <p>
+ * An FX option is a financial instrument that provides an option to exchange two currencies at a specified future time 
+ * only when barrier event occurs (knock-in option) or does not occur (knock-out option).
+ * <p>
+ * Depending on the barrier defined in {@link Barrier}, the option is classified into four types: up-and-in, 
+ * down-and-in, up-and-out and down-and-out.
+ * <p>
+ * For example, a up-and-out call on a 'EUR 1.00 / USD -1.41' exchange with barrier of 1.5 is the option to
+ * perform a foreign exchange on the expiry date, where USD 1.41 is paid to receive EUR 1.00, only when EUR/USD rate does 
+ * not exceed 1.5 during the barrier event observation period.  
+ * <p>
+ * In case of the occurrence (non-occurrence for knock-in options) of the barrier event, the option becomes worthless, 
+ * or alternatively, a rebate is made. 
+ */
 @BeanDefinition(builderScope = "private")
 public final class ResolvedFxSingleBarrierOption
     implements ResolvedProduct, ImmutableBean, Serializable {
@@ -34,7 +55,7 @@ public final class ResolvedFxSingleBarrierOption
   /**
    * The amount paid back to the option holder in case the option expires inactive.
    * <p>
-   * The barrier definition for the barrier option is given within this field. 
+   * The barrier definition is given within this field. 
    */
   @PropertyDefinition
   private final ResolvedFxOneTouchOption rebate;
@@ -55,8 +76,11 @@ public final class ResolvedFxSingleBarrierOption
     ResolvedFxOneTouchOption rebateResolved = ResolvedFxOneTouchOption.of(
         underlyingOption.getLongShort(),
         underlyingOption.getExpiry(),
-        Payment.of(rebate, underlyingOption.getUnderlying().getPaymentDate()),
-        underlyingOption.getUnderlying().getCurrencyPair(), barrier);
+        Payment.of(
+            rebate,
+            underlyingOption.getUnderlying().getPaymentDate()),
+        underlyingOption.getUnderlying().getCurrencyPair(),
+        barrier);
     return new ResolvedFxSingleBarrierOption(underlyingOption, rebateResolved);
   }
 
@@ -78,7 +102,7 @@ public final class ResolvedFxSingleBarrierOption
 
   //-------------------------------------------------------------------------
   /**
-   * Obtains the barrier. 
+   * Gets the barrier. 
    * 
    * @return the barrier
    */
@@ -87,7 +111,7 @@ public final class ResolvedFxSingleBarrierOption
   }
 
   /**
-   * The premium is rebated or not. 
+   * Gets whether the premium is rebated or not. 
    * 
    * @return true if rebated, false otherwise
    */
@@ -150,7 +174,7 @@ public final class ResolvedFxSingleBarrierOption
   /**
    * Gets the amount paid back to the option holder in case the option expires inactive.
    * <p>
-   * The barrier definition for the barrier option is given within this field.
+   * The barrier definition is given within this field.
    * @return the value of the property
    */
   public ResolvedFxOneTouchOption getRebate() {

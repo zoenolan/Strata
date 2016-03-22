@@ -1,3 +1,8 @@
+/**
+ * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
+ *
+ * Please see distribution for license.
+ */
 package com.opengamma.strata.product.fx;
 
 import java.io.Serializable;
@@ -32,12 +37,15 @@ import com.opengamma.strata.product.ResolvedProduct;
  * Resolved FX one-touch or no-touch option. 
  * <p>
  * An FX one-touch/no-touch option is a financial instrument that pays one unit of a currency based on the future value of
- * a foreign exchange. The option is European, exercised only on the exercise date.
+ * a foreign exchange.
  * <p>
  * For a one touch option, the option holder receives one unit of base/counter currency if the exchange spot rate touches 
  * a given barrier level at any time until expiry, and the payoff is zero otherwise. 
  * For a no touch option, the option holder receives one unit of base/counter currency if the exchange spot rate does not  
  * touch a given barrier level at any time until expiry, and the payoff is zero otherwise. 
+ * <p>
+ * Note that we assume the payment date of the payoff is specified in the contract and the payment is not made before 
+ * the option expires. Thus "one-touch at hit" option is not considered in this class. 
  * <p>
  * For example, a one touch option on an EUR/USD exchange rate with barrier 1.4 and EUR delivery pays one unit of EUR 
  * if the spot touches 1.4 until expiry.
@@ -56,23 +64,59 @@ public final class ResolvedFxOneTouchOption
    */
   @PropertyDefinition(validate = "notNull")
   private final ZonedDateTime expiry;
-
+  /**
+   * The payoff and notional.
+   * <p>
+   * The payment date, notional and currency.
+   * The payment date should not be before expiry, and the currency should be one of the currency pair.
+   */
   @PropertyDefinition(validate = "notNull")
   private final Payment payoffNotional;
-
+  /**
+   * The currency pair.
+   * <p>
+   * The occurrence or non-occurrence of a barrier event is based on the exchange rate 
+   * of this currency pair and direction. 
+   */
   @PropertyDefinition(validate = "notNull")
   private final CurrencyPair currencyPair;
-
+  /**
+   * The barrier. 
+   * <p>
+   * The barrier level specified in this field must be based on {@code currencyPair}.
+   */
   @PropertyDefinition(validate = "notNull")
   private final Barrier barrier;
 
   //-------------------------------------------------------------------------
+  /**
+   * Obtains the resolved option.
+   * 
+   * @param longShort  long or short
+   * @param payoffCurrency  the payoff currency
+   * @param notional  the notional
+   * @param paymentDate  the payment date
+   * @param expiry  the expiry
+   * @param currencyPair  the currency pair
+   * @param barrier  the barrier
+   * @return the instance
+   */
   public static ResolvedFxOneTouchOption of(LongShort longShort, Currency payoffCurrency, double notional,
       LocalDate paymentDate, ZonedDateTime expiry, CurrencyPair currencyPair, Barrier barrier) {
     Payment payoffNotional = Payment.of(payoffCurrency, notional, paymentDate);
     return new ResolvedFxOneTouchOption(longShort, expiry, payoffNotional, currencyPair, barrier);
   }
 
+  /**
+   * Obtains the resolved option. 
+   * 
+   * @param longShort long or short
+   * @param expiry  the expiry
+   * @param payoffNotional  the payoff and notional
+   * @param currencyPair  the currency pair
+   * @param barrier  the barrier
+   * @return the instance
+   */
   public static ResolvedFxOneTouchOption of(LongShort longShort, ZonedDateTime expiry, Payment payoffNotional,
       CurrencyPair currencyPair, Barrier barrier) {
     return new ResolvedFxOneTouchOption(longShort, expiry, payoffNotional, currencyPair, barrier);
@@ -88,10 +132,20 @@ public final class ResolvedFxOneTouchOption
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Get the payoff currency. 
+   * 
+   * @return the payoff currency
+   */
   public Currency getPayoffCurrency() {
     return payoffNotional.getCurrency();
   }
 
+  /**
+   * Gets the notional. 
+   * 
+   * @return the notional
+   */
   public double getNotional() {
     return payoffNotional.getAmount();
   }
@@ -169,7 +223,10 @@ public final class ResolvedFxOneTouchOption
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the payoffNotional.
+   * Gets the payoff and notional.
+   * <p>
+   * The payment date, notional and currency.
+   * The payment date should not be before expiry, and the currency should be one of the currency pair.
    * @return the value of the property, not null
    */
   public Payment getPayoffNotional() {
@@ -178,7 +235,10 @@ public final class ResolvedFxOneTouchOption
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the currencyPair.
+   * Gets the currency pair.
+   * <p>
+   * The occurrence or non-occurrence of a barrier event is based on the exchange rate
+   * of this currency pair and direction.
    * @return the value of the property, not null
    */
   public CurrencyPair getCurrencyPair() {
@@ -188,6 +248,8 @@ public final class ResolvedFxOneTouchOption
   //-----------------------------------------------------------------------
   /**
    * Gets the barrier.
+   * <p>
+   * The barrier level specified in this field must be based on {@code currencyPair}.
    * @return the value of the property, not null
    */
   public Barrier getBarrier() {
