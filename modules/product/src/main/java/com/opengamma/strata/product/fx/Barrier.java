@@ -36,4 +36,11 @@ public interface Barrier {
    */
   public abstract double getBarrierLevel(LocalDate date);
 
+  /**
+   * Obtains an instance with knock type inverted. 
+   * 
+   * @return the instance
+   */
+  public abstract Barrier inverseKnockType();
+
 }

@@ -16,12 +16,13 @@ import com.opengamma.strata.product.fx.KnockType;
 import com.opengamma.strata.product.fx.SimpleConstantContinuousBarrier;
 
 /**
- * The price function to compute the price of one-touch or no-touch option in the Black world.
+ * The price function to compute the price of one-touch or no-touch (cash-or-nothing) option in the Black world.
  * <p>
- * This function prices one-touch/no-touch option, where the cash payment can occur at hit.
+ * This function prices one-touch/no-touch option, where the cash payment can occur at hit for a one-touch option, and 
+ * at expiry for a no-touch option.
  * Reference: E. G. Haug (2007) The complete guide to Option Pricing Formulas. Mc Graw Hill. Section 4.19.5.
  */
-public class BlackOneTouchPriceFormulaRepository {
+public class BlackOneTouchCashPriceFormulaRepository {
 
   /**
    * The normal distribution implementation used in the pricing.
@@ -60,12 +61,11 @@ public class BlackOneTouchPriceFormulaRepository {
     ArgChecker.isTrue(!(barrier.getBarrierType() == BarrierType.UP && spot > barrier.getBarrierLevel()),
         "The Data is not consistent with an alive barrier (UP and spot>barrier).");
     double eta = isDown ? 1 : -1;
-    double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));
     double df2 = Math.exp(-rate * timeToExpiry);
     double lognormalVolSq = lognormalVol * lognormalVol;
     double lognormalVolT = lognormalVol * Math.sqrt(timeToExpiry);
     if (DoubleMath.fuzzyEquals(Math.min(timeToExpiry, lognormalVolSq), 0d, SMALL)) {
-      return isKnockIn ? 0d : df1;
+      return isKnockIn ? 0d : df2;
     }
     double mu = (costOfCarry - 0.5 * lognormalVolSq) / lognormalVolSq;
     double lambda = Math.sqrt(mu * mu + 2 * rate / lognormalVolSq);
@@ -179,9 +179,9 @@ public class BlackOneTouchPriceFormulaRepository {
     double lognormalVolSqBar = -costOfCarry / (lognormalVolSq * lognormalVolSq) * muBar - rate /
         (lognormalVolSq * lognormalVolSq) / lambda * lambdaBar;
     derivatives[0] += dxyds * x2Bar - dxyds * y2Bar - dxyds * zBar;
-    derivatives[1] = -timeToExpiry * df2 * df2Bar + 1.0 / lambda / lognormalVolSq * lambdaBar;
-    derivatives[2] = 1.0 / lognormalVolSq * muBar;
-    derivatives[3] = 2 * lognormalVol * lognormalVolSqBar + Math.sqrt(timeToExpiry) * lognormalVolTBar;
+    derivatives[1] = -timeToExpiry * df2 * df2Bar + lambdaBar / lambda / lognormalVolSq;
+    derivatives[2] = muBar / lognormalVolSq;
+    derivatives[3] = 2d * lognormalVol * lognormalVolSqBar + Math.sqrt(timeToExpiry) * lognormalVolTBar;
     derivatives[4] = -rate * df2 * df2Bar + lognormalVolTBar * lognormalVolT * 0.5 / timeToExpiry;
     derivatives[5] += -dxyds * x2Bar / spot + dxyds * y2Bar / spot + dxyds * zBar / spot
         + dxyds * dxyds * x2SqBar

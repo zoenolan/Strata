@@ -188,7 +188,7 @@ public class BlackBarrierPriceFormulaRepositoryTest {
    * Regression to 2.x, including rebate.
    */
   public void adjointPriceRegression() {
-    BlackOneTouchPriceFormulaRepository rebate = new BlackOneTouchPriceFormulaRepository();
+    BlackOneTouchCashPriceFormulaRepository rebate = new BlackOneTouchCashPriceFormulaRepository();
     double[] priceDIExp = new double[] {6.625939880275156, 8.17524397035564, 3.51889794875554, 16.046696834562567,
       10.70082805329517, 4.016261046580751 };
     double[] priceDOExp = new double[] {16.801234633074746, 1.2809481492685348, 11.695029389570358, 1.9796398042263066,

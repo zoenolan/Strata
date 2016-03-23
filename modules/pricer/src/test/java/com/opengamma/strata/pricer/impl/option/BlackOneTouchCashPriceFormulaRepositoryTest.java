@@ -20,10 +20,10 @@ import com.opengamma.strata.product.fx.KnockType;
 import com.opengamma.strata.product.fx.SimpleConstantContinuousBarrier;
 
 /**
- * Test {@link BlackOneTouchPriceFormulaRepository}.
+ * Test {@link BlackOneTouchCashPriceFormulaRepository}.
  */
 @Test
-public class BlackOneTouchPriceFormulaRepositoryTest {
+public class BlackOneTouchCashPriceFormulaRepositoryTest {
   private static final ZonedDateTime REFERENCE_DATE = TestHelper.dateUtc(2011, 7, 1);
   private static final ZonedDateTime EXPIRY_DATE = TestHelper.dateUtc(2015, 1, 2);
   private static final double EXPIRY_TIME =
@@ -43,12 +43,11 @@ public class BlackOneTouchPriceFormulaRepositoryTest {
   private static final double RATE_FOR = 0.02; // Foreign rate
   private static final double COST_OF_CARRY = RATE_DOM - RATE_FOR; // Domestic - Foreign rate
   private static final double VOLATILITY = 0.20;
-  private static final double DF_DOM = Math.exp(-RATE_DOM * EXPIRY_TIME); // 'Quote Ccy
+  private static final double DF_DOM = Math.exp(-RATE_DOM * EXPIRY_TIME);
 
   private static final double TOL = 1.0e-14;
   private static final double EPS_FD = 1.0e-6;
-
-  private static final BlackOneTouchPriceFormulaRepository PRICER = new BlackOneTouchPriceFormulaRepository();
+  private static final BlackOneTouchCashPriceFormulaRepository PRICER = new BlackOneTouchCashPriceFormulaRepository();
 
   /**
    * standard in-out parity holds if r=0.
@@ -58,8 +57,8 @@ public class BlackOneTouchPriceFormulaRepositoryTest {
     double upOut = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, 0d, VOLATILITY, BARRIER_UP_OUT);
     double downIn = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, 0d, VOLATILITY, BARRIER_DOWN_IN);
     double downOut = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, 0d, VOLATILITY, BARRIER_DOWN_OUT);
-    assertRelative(upIn + upOut, 1d, TOL);
-    assertRelative(downIn + downOut, 1d, TOL);
+    assertRelative(upIn + upOut, 1d);
+    assertRelative(downIn + downOut, 1d);
   }
 
   /**
@@ -70,8 +69,8 @@ public class BlackOneTouchPriceFormulaRepositoryTest {
     SimpleConstantContinuousBarrier out = SimpleConstantContinuousBarrier.of(BarrierType.UP, KnockType.KNOCK_OUT, 1.0e4);
     double upIn = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, RATE_DOM, VOLATILITY, in);
     double upOut = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, RATE_DOM, VOLATILITY, out);
-    assertRelative(upIn, 0d, TOL);
-    assertRelative(upOut, DF_DOM, TOL);
+    assertRelative(upIn, 0d);
+    assertRelative(upOut, DF_DOM);
   }
 
   /**
@@ -84,8 +83,8 @@ public class BlackOneTouchPriceFormulaRepositoryTest {
         SimpleConstantContinuousBarrier.of(BarrierType.DOWN, KnockType.KNOCK_OUT, 0.1d);
     double dwIn = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, RATE_DOM, VOLATILITY, in);
     double dwOut = PRICER.price(SPOT, EXPIRY_TIME, COST_OF_CARRY, RATE_DOM, VOLATILITY, out);
-    assertRelative(dwIn, 0d, TOL);
-    assertRelative(dwOut, DF_DOM, TOL);
+    assertRelative(dwIn, 0d);
+    assertRelative(dwOut, DF_DOM);
   }
 
   /**
@@ -138,12 +137,12 @@ public class BlackOneTouchPriceFormulaRepositoryTest {
       double time = 1.0e-2;
       double optUp = PRICER.price(SPOT, time, COST_OF_CARRY, RATE_DOM, volUp, barrier);
       double optDw = PRICER.price(SPOT, time, COST_OF_CARRY, RATE_DOM, volDw, barrier);
-      assertRelative(optUp, optDw, 1.0e-3);
+      assertRelative(optUp, optDw);
       ValueDerivatives optUpAdj = PRICER.priceAdjoint(SPOT, time, COST_OF_CARRY, RATE_DOM, volUp, barrier);
       ValueDerivatives optDwAdj = PRICER.priceAdjoint(SPOT, time, COST_OF_CARRY, RATE_DOM, volDw, barrier);
-      assertRelative(optUpAdj.getValue(), optDwAdj.getValue(), 1.0e-3);
+      assertRelative(optUpAdj.getValue(), optDwAdj.getValue());
       for (int i = 0; i < 6; ++i) {
-        assertRelative(optUpAdj.getDerivative(i), optDwAdj.getDerivative(i), 1.0e-4);
+        assertRelative(optUpAdj.getDerivative(i), optDwAdj.getDerivative(i));
       }
     }
   }
@@ -163,7 +162,7 @@ public class BlackOneTouchPriceFormulaRepositoryTest {
   }
 
 //-------------------------------------------------------------------------
-  private void assertRelative(double val1, double val2, double tol) {
-    assertEquals(val1, val2, Math.max(Math.abs(val2), 1d) * tol);
+  private void assertRelative(double val1, double val2) {
+    assertEquals(val1, val2, Math.max(Math.abs(val2), 1d) * TOL);
   }
 }

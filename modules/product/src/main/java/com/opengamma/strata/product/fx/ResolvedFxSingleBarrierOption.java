@@ -8,12 +8,14 @@ package com.opengamma.strata.product.fx;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
 import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
+import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
 import org.joda.beans.MetaProperty;
 import org.joda.beans.Property;
@@ -24,7 +26,6 @@ import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
 import com.opengamma.strata.basics.currency.CurrencyAmount;
-import com.opengamma.strata.basics.currency.Payment;
 import com.opengamma.strata.product.ResolvedProduct;
 
 /**
@@ -33,10 +34,10 @@ import com.opengamma.strata.product.ResolvedProduct;
  * An FX option is a financial instrument that provides an option to exchange two currencies at a specified future time 
  * only when barrier event occurs (knock-in option) or does not occur (knock-out option).
  * <p>
- * Depending on the barrier defined in {@link Barrier}, the option is classified into four types: up-and-in, 
+ * Depending on the barrier defined in {@link Barrier}, the options are classified into four types: up-and-in, 
  * down-and-in, up-and-out and down-and-out.
  * <p>
- * For example, a up-and-out call on a 'EUR 1.00 / USD -1.41' exchange with barrier of 1.5 is the option to
+ * For example, an up-and-out call on a 'EUR 1.00 / USD -1.41' exchange with barrier of 1.5 is the option to
  * perform a foreign exchange on the expiry date, where USD 1.41 is paid to receive EUR 1.00, only when EUR/USD rate does 
  * not exceed 1.5 during the barrier event observation period.  
  * <p>
@@ -53,12 +54,26 @@ public final class ResolvedFxSingleBarrierOption
   @PropertyDefinition(validate = "notNull")
   private final ResolvedFxVanillaOption underlyingOption;
   /**
+   * The barrier description.
+   * <p>
+   * The barrier level stored in this field must be represented based on the direction of the currency pair in the 
+   * underlying FX transaction. 
+   */
+  @PropertyDefinition(validate = "notNull")
+  private final Barrier barrier;
+  /**
+   * The amount paid back to the option holder in case the option becomes inactive.
+   * <p>
+   * This is the notional amount represented in one of the currency pair. 
+   */
+  @PropertyDefinition(get = "optional")
+  private final CurrencyAmount rebate;
+  /**
    * The amount paid back to the option holder in case the option expires inactive.
    * <p>
-   * The barrier definition is given within this field. 
+   * This is not a field.
    */
-  @PropertyDefinition
-  private final ResolvedFxOneTouchOption rebate;
+  private final ResolvedFxOneTouchOption rebateOption;
 
   //-------------------------------------------------------------------------
   /**
@@ -73,15 +88,8 @@ public final class ResolvedFxSingleBarrierOption
       ResolvedFxVanillaOption underlyingOption,
       Barrier barrier,
       CurrencyAmount rebate) {
-    ResolvedFxOneTouchOption rebateResolved = ResolvedFxOneTouchOption.of(
-        underlyingOption.getLongShort(),
-        underlyingOption.getExpiry(),
-        Payment.of(
-            rebate,
-            underlyingOption.getUnderlying().getPaymentDate()),
-        underlyingOption.getUnderlying().getCurrencyPair(),
-        barrier);
-    return new ResolvedFxSingleBarrierOption(underlyingOption, rebateResolved);
+
+    return new ResolvedFxSingleBarrierOption(underlyingOption, barrier, rebate);
   }
 
   /**
@@ -92,31 +100,38 @@ public final class ResolvedFxSingleBarrierOption
    * @return the instance
    */
   public static ResolvedFxSingleBarrierOption of(ResolvedFxVanillaOption underlyingOption, Barrier barrier) {
-    ResolvedFxOneTouchOption rebateResolved = ResolvedFxOneTouchOption.of(
-        underlyingOption.getLongShort(),
-        underlyingOption.getExpiry(),
-        Payment.of(underlyingOption.getCounterCurrency(), 0d, underlyingOption.getUnderlying().getPaymentDate()),
-        underlyingOption.getUnderlying().getCurrencyPair(), barrier);
-    return new ResolvedFxSingleBarrierOption(underlyingOption, rebateResolved);
+
+    return new ResolvedFxSingleBarrierOption(underlyingOption, barrier, null);
+  }
+
+  @ImmutableConstructor
+  private ResolvedFxSingleBarrierOption(
+      ResolvedFxVanillaOption underlyingOption,
+      Barrier barrier,
+      CurrencyAmount rebate) {
+    JodaBeanUtils.notNull(underlyingOption, "underlyingOption");
+    JodaBeanUtils.notNull(barrier, "barrier");
+    this.underlyingOption = underlyingOption;
+    this.barrier = barrier;
+    this.rebate = rebate;
+    ResolvedFxOneTouchOption rebateResolved = (rebate == null || rebate.getAmount() == 0d) ? null :
+        ResolvedFxOneTouchOption.of(
+            underlyingOption.getLongShort(),
+            rebate,
+            underlyingOption.getExpiry(),
+            underlyingOption.getUnderlying().getCurrencyPair(),
+            barrier.inverseKnockType());
+    this.rebateOption = rebateResolved;
   }
 
   //-------------------------------------------------------------------------
   /**
-   * Gets the barrier. 
+   * Gets rebate option. 
    * 
-   * @return the barrier
+   * @return the rebate option
    */
-  public Barrier getBarrier() {
-    return rebate.getBarrier();
-  }
-
-  /**
-   * Gets whether the premium is rebated or not. 
-   * 
-   * @return true if rebated, false otherwise
-   */
-  public boolean hasRebate() {
-    return rebate.getNotional() != 0d ? true : false;
+  public Optional<ResolvedFxOneTouchOption> getRebateOption() {
+    return Optional.ofNullable(rebateOption);
   }
 
   //------------------------- AUTOGENERATED START -------------------------
@@ -137,14 +152,6 @@ public final class ResolvedFxSingleBarrierOption
    * The serialization version id.
    */
   private static final long serialVersionUID = 1L;
-
-  private ResolvedFxSingleBarrierOption(
-      ResolvedFxVanillaOption underlyingOption,
-      ResolvedFxOneTouchOption rebate) {
-    JodaBeanUtils.notNull(underlyingOption, "underlyingOption");
-    this.underlyingOption = underlyingOption;
-    this.rebate = rebate;
-  }
 
   @Override
   public ResolvedFxSingleBarrierOption.Meta metaBean() {
@@ -172,13 +179,25 @@ public final class ResolvedFxSingleBarrierOption
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the amount paid back to the option holder in case the option expires inactive.
+   * Gets the barrier description.
    * <p>
-   * The barrier definition is given within this field.
-   * @return the value of the property
+   * The barrier level stored in this field must be represented based on the direction of the currency pair in the
+   * underlying FX transaction.
+   * @return the value of the property, not null
    */
-  public ResolvedFxOneTouchOption getRebate() {
-    return rebate;
+  public Barrier getBarrier() {
+    return barrier;
+  }
+
+  //-----------------------------------------------------------------------
+  /**
+   * Gets the amount paid back to the option holder in case the option becomes inactive.
+   * <p>
+   * This is the notional amount represented in one of the currency pair.
+   * @return the optional value of the property, not null
+   */
+  public Optional<CurrencyAmount> getRebate() {
+    return Optional.ofNullable(rebate);
   }
 
   //-----------------------------------------------------------------------
@@ -190,6 +209,7 @@ public final class ResolvedFxSingleBarrierOption
     if (obj != null && obj.getClass() == this.getClass()) {
       ResolvedFxSingleBarrierOption other = (ResolvedFxSingleBarrierOption) obj;
       return JodaBeanUtils.equal(underlyingOption, other.underlyingOption) &&
+          JodaBeanUtils.equal(barrier, other.barrier) &&
           JodaBeanUtils.equal(rebate, other.rebate);
     }
     return false;
@@ -199,15 +219,17 @@ public final class ResolvedFxSingleBarrierOption
   public int hashCode() {
     int hash = getClass().hashCode();
     hash = hash * 31 + JodaBeanUtils.hashCode(underlyingOption);
+    hash = hash * 31 + JodaBeanUtils.hashCode(barrier);
     hash = hash * 31 + JodaBeanUtils.hashCode(rebate);
     return hash;
   }
 
   @Override
   public String toString() {
-    StringBuilder buf = new StringBuilder(96);
+    StringBuilder buf = new StringBuilder(128);
     buf.append("ResolvedFxSingleBarrierOption{");
     buf.append("underlyingOption").append('=').append(underlyingOption).append(',').append(' ');
+    buf.append("barrier").append('=').append(barrier).append(',').append(' ');
     buf.append("rebate").append('=').append(JodaBeanUtils.toString(rebate));
     buf.append('}');
     return buf.toString();
@@ -229,16 +251,22 @@ public final class ResolvedFxSingleBarrierOption
     private final MetaProperty<ResolvedFxVanillaOption> underlyingOption = DirectMetaProperty.ofImmutable(
         this, "underlyingOption", ResolvedFxSingleBarrierOption.class, ResolvedFxVanillaOption.class);
     /**
+     * The meta-property for the {@code barrier} property.
+     */
+    private final MetaProperty<Barrier> barrier = DirectMetaProperty.ofImmutable(
+        this, "barrier", ResolvedFxSingleBarrierOption.class, Barrier.class);
+    /**
      * The meta-property for the {@code rebate} property.
      */
-    private final MetaProperty<ResolvedFxOneTouchOption> rebate = DirectMetaProperty.ofImmutable(
-        this, "rebate", ResolvedFxSingleBarrierOption.class, ResolvedFxOneTouchOption.class);
+    private final MetaProperty<CurrencyAmount> rebate = DirectMetaProperty.ofImmutable(
+        this, "rebate", ResolvedFxSingleBarrierOption.class, CurrencyAmount.class);
     /**
      * The meta-properties.
      */
     private final Map<String, MetaProperty<?>> metaPropertyMap$ = new DirectMetaPropertyMap(
         this, null,
         "underlyingOption",
+        "barrier",
         "rebate");
 
     /**
@@ -252,6 +280,8 @@ public final class ResolvedFxSingleBarrierOption
       switch (propertyName.hashCode()) {
         case 87556658:  // underlyingOption
           return underlyingOption;
+        case -333143113:  // barrier
+          return barrier;
         case -934952029:  // rebate
           return rebate;
       }
@@ -283,10 +313,18 @@ public final class ResolvedFxSingleBarrierOption
     }
 
     /**
+     * The meta-property for the {@code barrier} property.
+     * @return the meta-property, not null
+     */
+    public MetaProperty<Barrier> barrier() {
+      return barrier;
+    }
+
+    /**
      * The meta-property for the {@code rebate} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<ResolvedFxOneTouchOption> rebate() {
+    public MetaProperty<CurrencyAmount> rebate() {
       return rebate;
     }
 
@@ -296,8 +334,10 @@ public final class ResolvedFxSingleBarrierOption
       switch (propertyName.hashCode()) {
         case 87556658:  // underlyingOption
           return ((ResolvedFxSingleBarrierOption) bean).getUnderlyingOption();
+        case -333143113:  // barrier
+          return ((ResolvedFxSingleBarrierOption) bean).getBarrier();
         case -934952029:  // rebate
-          return ((ResolvedFxSingleBarrierOption) bean).getRebate();
+          return ((ResolvedFxSingleBarrierOption) bean).rebate;
       }
       return super.propertyGet(bean, propertyName, quiet);
     }
@@ -320,7 +360,8 @@ public final class ResolvedFxSingleBarrierOption
   private static final class Builder extends DirectFieldsBeanBuilder<ResolvedFxSingleBarrierOption> {
 
     private ResolvedFxVanillaOption underlyingOption;
-    private ResolvedFxOneTouchOption rebate;
+    private Barrier barrier;
+    private CurrencyAmount rebate;
 
     /**
      * Restricted constructor.
@@ -334,6 +375,8 @@ public final class ResolvedFxSingleBarrierOption
       switch (propertyName.hashCode()) {
         case 87556658:  // underlyingOption
           return underlyingOption;
+        case -333143113:  // barrier
+          return barrier;
         case -934952029:  // rebate
           return rebate;
         default:
@@ -347,8 +390,11 @@ public final class ResolvedFxSingleBarrierOption
         case 87556658:  // underlyingOption
           this.underlyingOption = (ResolvedFxVanillaOption) newValue;
           break;
+        case -333143113:  // barrier
+          this.barrier = (Barrier) newValue;
+          break;
         case -934952029:  // rebate
-          this.rebate = (ResolvedFxOneTouchOption) newValue;
+          this.rebate = (CurrencyAmount) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -384,15 +430,17 @@ public final class ResolvedFxSingleBarrierOption
     public ResolvedFxSingleBarrierOption build() {
       return new ResolvedFxSingleBarrierOption(
           underlyingOption,
+          barrier,
           rebate);
     }
 
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(96);
+      StringBuilder buf = new StringBuilder(128);
       buf.append("ResolvedFxSingleBarrierOption.Builder{");
       buf.append("underlyingOption").append('=').append(JodaBeanUtils.toString(underlyingOption)).append(',').append(' ');
+      buf.append("barrier").append('=').append(JodaBeanUtils.toString(barrier)).append(',').append(' ');
       buf.append("rebate").append('=').append(JodaBeanUtils.toString(rebate));
       buf.append('}');
       return buf.toString();
