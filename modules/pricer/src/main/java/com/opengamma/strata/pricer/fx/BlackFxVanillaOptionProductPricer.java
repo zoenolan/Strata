@@ -22,6 +22,9 @@ import com.opengamma.strata.product.fx.ResolvedFxVanillaOption;
  * Pricer for foreign exchange vanilla option transaction products with a lognormal model.
  * <p>
  * This function provides the ability to price an {@link ResolvedFxVanillaOption}.
+ * <p>
+ * All of the computation is be based on the counter currency of the underlying FX transaction. 
+ * For example, price, PV and risk measures of the product will be expressed in USD for an option on EUR/USD.
  */
 public class BlackFxVanillaOptionProductPricer {
 

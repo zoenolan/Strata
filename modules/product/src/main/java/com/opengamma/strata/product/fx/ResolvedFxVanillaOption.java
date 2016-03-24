@@ -40,9 +40,6 @@ import com.opengamma.strata.product.ResolvedProduct;
  * Applications will typically create a {@code ResolvedFxVanillaOption} from a {@code FxVanillaOption}
  * using {@link FxVanillaOption#resolve(ReferenceData)}.
  * <p>
- * Note that all of the computation in product pricers must be based on the counter currency of the underlying FX 
- * transaction. Thus price, pv and risk measures of the product will be expressed in this currency by default.
- * <p>
  * A {@code ResolvedFxVanillaOption} is bound to data that changes over time, such as holiday calendars.
  * If the data changes, such as the addition of a new holiday, the resolved form will not be updated.
  * Care must be taken when placing the resolved form in a cache or persistence layer.
@@ -54,8 +51,8 @@ public final class ResolvedFxVanillaOption
   /**
    * Whether the option is long or short.
    * <p>
-   * Long indicates that the owner wants the option to be in the money at expiry.
-   * Short indicates that the owner wants the option to be out of the money at expiry.
+   * At expiry, the long party will have the option to enter in this transaction; 
+   * the short party will, at the option of the long party, potentially enter into the inverse transaction.
    */
   @PropertyDefinition(validate = "notNull")
   private final LongShort longShort;
@@ -179,8 +176,8 @@ public final class ResolvedFxVanillaOption
   /**
    * Gets whether the option is long or short.
    * <p>
-   * Long indicates that the owner wants the option to be in the money at expiry.
-   * Short indicates that the owner wants the option to be out of the money at expiry.
+   * At expiry, the long party will have the option to enter in this transaction;
+   * the short party will, at the option of the long party, potentially enter into the inverse transaction.
    * @return the value of the property, not null
    */
   public LongShort getLongShort() {
@@ -467,8 +464,8 @@ public final class ResolvedFxVanillaOption
     /**
      * Sets whether the option is long or short.
      * <p>
-     * Long indicates that the owner wants the option to be in the money at expiry.
-     * Short indicates that the owner wants the option to be out of the money at expiry.
+     * At expiry, the long party will have the option to enter in this transaction;
+     * the short party will, at the option of the long party, potentially enter into the inverse transaction.
      * @param longShort  the new value, not null
      * @return this, for chaining, not null
      */
