@@ -21,9 +21,17 @@ public class BlackFxSingleBarrierOptionProductPricer {
    */
   public static final BlackFxSingleBarrierOptionProductPricer DEFAULT = new BlackFxSingleBarrierOptionProductPricer();
 
+  /**
+   * Pricer for barrier option without rebate.
+   */
   private static final BlackBarrierPriceFormulaRepository BARRIER_PRICER = new BlackBarrierPriceFormulaRepository();
-
+  /**
+   * Pricer for rebate.
+   */
   private static final BlackOneTouchAssetPriceFormulaRepository ASSET_REBATE_PRICER = new BlackOneTouchAssetPriceFormulaRepository();
+  /**
+   * Pricer for rebate.
+   */
   private static final BlackOneTouchCashPriceFormulaRepository CASH_REBATE_PRICER = new BlackOneTouchCashPriceFormulaRepository();
 
   /**
@@ -31,8 +39,6 @@ public class BlackFxSingleBarrierOptionProductPricer {
    */
   public BlackFxSingleBarrierOptionProductPricer() {
   }
-
-  // TODO check val dates
 
   //-------------------------------------------------------------------------
   /**
@@ -72,8 +78,7 @@ public class BlackFxSingleBarrierOptionProductPricer {
       RatesProvider ratesProvider,
       BlackVolatilityFxProvider volatilityProvider) {
 
-    ArgChecker.isTrue(option.getBarrier() instanceof SimpleConstantContinuousBarrier,
-        "barrier should be SimpleConstantContinuousBarrier");
+    validate(option, ratesProvider, volatilityProvider);
     SimpleConstantContinuousBarrier barrier = (SimpleConstantContinuousBarrier) option.getBarrier();
     ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
     ResolvedFxSingle underlyingFx = underlyingOption.getUnderlying();
@@ -93,22 +98,29 @@ public class BlackFxSingleBarrierOptionProductPricer {
     double forward = spot * dfBase / dfCounter;
     double volatility = volatilityProvider.getVolatility(currencyPair, underlyingOption.getExpiry(), strike, forward);
     double timeToExpiry = volatilityProvider.relativeTime(underlyingOption.getExpiry());
-    //    double volatility = 0.16005581964804308;
     double price = BARRIER_PRICER.price(spot, strike, timeToExpiry, costOfCarry, rateCounter, volatility,
         underlyingOption.getPutCall().isCall(), barrier);
     if (option.getRebate().isPresent()) {
       CurrencyAmount rebate = option.getRebate().get();
-      double priceRebate = rebate.getCurrency().equals(underlyingOption.getCounterCurrency()) ?
+      double priceRebate = rebate.getCurrency().equals(ccyCounter) ?
           CASH_REBATE_PRICER.price(spot, timeToExpiry, costOfCarry, rateCounter, volatility, barrier.inverseKnockType()) :
           ASSET_REBATE_PRICER.price(spot, timeToExpiry, costOfCarry, rateCounter, volatility, barrier.inverseKnockType());
-      System.out
-          .println(priceRebate * rebate.getAmount() / Math.abs(underlyingFx.getBaseCurrencyPayment().getAmount()));
       price += priceRebate * rebate.getAmount() / Math.abs(underlyingFx.getBaseCurrencyPayment().getAmount());
     }
     return price;
   }
 
   //-------------------------------------------------------------------------
+  private void validate(ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    ArgChecker.isTrue(option.getBarrier() instanceof SimpleConstantContinuousBarrier,
+        "barrier should be SimpleConstantContinuousBarrier");
+    ArgChecker.isTrue(ratesProvider.getValuationDate().isEqual(volatilityProvider.getValuationDateTime().toLocalDate()),
+        "Volatility and rate data must be for the same date");
+  }
+
   // signed notional amount to computed present value and value Greeks
   private double signedNotional(ResolvedFxVanillaOption option) {
     return (option.getLongShort().isLong() ? 1d : -1d) *
