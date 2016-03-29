@@ -13,6 +13,8 @@ import org.testng.annotations.Test;
 
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.CurrencyPair;
+import com.opengamma.strata.market.curve.CurveCurrencyParameterSensitivities;
+import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.product.fx.BarrierType;
 import com.opengamma.strata.product.fx.KnockType;
@@ -63,6 +65,11 @@ public class BlackFxSingleBarrierOptionProductPricerTest {
   public void regression_pv() {
     CurrencyAmount pv = PRICER.presentValue(CALL_KI, RATE_PROVIDER, VOL_PROVIDER);
     assertEquals(pv.getAmount(), 9035006.129433425, NOTIONAL * TOL);
+  }
+
+  public void regression_curveSensitivity() {
+    PointSensitivityBuilder point = PRICER.presentValueSensitivity(CALL_KI, RATE_PROVIDER, VOL_PROVIDER);
+    CurveCurrencyParameterSensitivities pvSensi = RATE_PROVIDER.curveParameterSensitivity(point.build());
   }
 
 }
