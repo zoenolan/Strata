@@ -41,10 +41,7 @@ import com.opengamma.strata.product.Product;
  * a foreign exchange. The option is European, exercised only on the exercise date.
  * <p>
  * For example, a call on a 'EUR 1.00 / USD -1.41' exchange is the option to
- * perform a foreign exchange on the expiry date, where USD 1.41 is paid to receive EUR 1.00.
- * <p>
- * Note that all of the computation in product pricers must be based on the counter currency of the underlying FX 
- * transaction. Thus price, pv and risk measures of the product will be expressed in USD by default for the above example. 
+ * perform a foreign exchange on the expiry date, where USD 1.41 is paid to receive EUR 1.00. 
  */
 @BeanDefinition
 public final class FxVanillaOption
@@ -53,8 +50,8 @@ public final class FxVanillaOption
   /**
    * Whether the option is long or short.
    * <p>
-   * Long indicates that the owner wants the option to be in the money at expiry.
-   * Short indicates that the owner wants the option to be out of the money at expiry.
+   * At expiry, the long party will have the option to enter in this transaction; 
+   * the short party will, at the option of the long party, potentially enter into the inverse transaction.
    */
   @PropertyDefinition(validate = "notNull")
   private final LongShort longShort;
@@ -184,8 +181,8 @@ public final class FxVanillaOption
   /**
    * Gets whether the option is long or short.
    * <p>
-   * Long indicates that the owner wants the option to be in the money at expiry.
-   * Short indicates that the owner wants the option to be out of the money at expiry.
+   * At expiry, the long party will have the option to enter in this transaction;
+   * the short party will, at the option of the long party, potentially enter into the inverse transaction.
    * @return the value of the property, not null
    */
   public LongShort getLongShort() {
@@ -552,8 +549,8 @@ public final class FxVanillaOption
     /**
      * Sets whether the option is long or short.
      * <p>
-     * Long indicates that the owner wants the option to be in the money at expiry.
-     * Short indicates that the owner wants the option to be out of the money at expiry.
+     * At expiry, the long party will have the option to enter in this transaction;
+     * the short party will, at the option of the long party, potentially enter into the inverse transaction.
      * @param longShort  the new value, not null
      * @return this, for chaining, not null
      */

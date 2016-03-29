@@ -22,9 +22,7 @@ import java.time.ZonedDateTime;
 import org.testng.annotations.Test;
 
 import com.opengamma.strata.basics.LongShort;
-import com.opengamma.strata.basics.PutCall;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
-import com.opengamma.strata.basics.currency.FxRate;
 import com.opengamma.strata.basics.market.ReferenceData;
 
 /**
@@ -38,8 +36,6 @@ public class FxVanillaOptionTest {
   private static final LocalTime EXPIRY_TIME = LocalTime.of(12, 15);
   private static final ZoneId EXPIRY_ZONE = ZoneId.of("Z");
   private static final LongShort LONG = LongShort.LONG;
-  private static final PutCall CALL = PutCall.CALL;
-  private static final FxRate STRIKE = FxRate.of(EUR, USD, 1.3);
   private static final LocalDate PAYMENT_DATE = LocalDate.of(2015, 2, 16);
   private static final double NOTIONAL = 1.0e6;
   private static final CurrencyAmount EUR_AMOUNT = CurrencyAmount.of(EUR, NOTIONAL);
