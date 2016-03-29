@@ -3,6 +3,7 @@ package com.opengamma.strata.pricer.fx;
 import static com.opengamma.strata.basics.LongShort.LONG;
 import static com.opengamma.strata.basics.currency.Currency.EUR;
 import static com.opengamma.strata.basics.currency.Currency.USD;
+import static org.testng.Assert.assertEquals;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -57,11 +58,11 @@ public class BlackFxSingleBarrierOptionProductPricerTest {
       REBATE);
 
   private static final BlackFxSingleBarrierOptionProductPricer PRICER = BlackFxSingleBarrierOptionProductPricer.DEFAULT;
+  private static final double TOL = 1.0e-13;
 
-  public void test() {
+  public void regression_pv() {
     CurrencyAmount pv = PRICER.presentValue(CALL_KI, RATE_PROVIDER, VOL_PROVIDER);
-    //    System.out.println(pv); // 9035006.129433425,  USD 9035006.129433414
-
+    assertEquals(pv.getAmount(), 9035006.129433425, NOTIONAL * TOL);
   }
 
 }

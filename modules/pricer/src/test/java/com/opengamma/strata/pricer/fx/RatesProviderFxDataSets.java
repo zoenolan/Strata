@@ -158,10 +158,11 @@ public class RatesProviderFxDataSets {
         .build();
   }
 
-  public static String[] curveNames() {
-    return new String[] {DISCOUNTING_EUR, DISCOUNTING_USD, DISCOUNTING_GBP, DISCOUNTING_KRW};
-  }
-
+  /**
+   * Gets the FX matrix.
+   * 
+   * @return the FX matrix
+   */
   public static FxMatrix fxMatrix() {
     return FX_MATRIX;
   }

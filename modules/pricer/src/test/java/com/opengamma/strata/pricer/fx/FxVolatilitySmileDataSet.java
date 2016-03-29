@@ -11,6 +11,9 @@ import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
 
+/**
+ * Sets of volatility data used in FX option tests.
+ */
 public class FxVolatilitySmileDataSet {
 
   private static final String NAME = "smileEurUsd";
@@ -38,18 +41,48 @@ public class FxVolatilitySmileDataSet {
   private static final InterpolatedSmileDeltaTermStructureStrikeInterpolation SMILE_TERM_6 =
       InterpolatedSmileDeltaTermStructureStrikeInterpolation.of(NAME, TIME_6, DELTA, ATM_6, RISK_REVERSAL_6, STRANGLE_6);
 
+  /**
+   * Creates volatility provider with term structure of smile parameters. 
+   * <p>
+   * The number of time slices are 5, and the day count convention is ACT/ACT ISDA. 
+   * 
+   * @param dateTime  the valuation date time
+   * @return  the volatility provider
+   */
   public static BlackVolatilitySmileFxProvider createVolatilitySmileProvider5(ZonedDateTime dateTime) {
     return BlackVolatilitySmileFxProvider.of(SMILE_TERM_5, CURRENCY_PAIR, ACT_ACT_ISDA, dateTime);
   }
 
+  /**
+   * Creates volatility provider with term structure of smile parameters. 
+   * <p>
+   * The number of time slices are 6, and the day count convention is ACT/365F.
+   * 
+   * @param dateTime  the valuation date time
+   * @return  the volatility provider
+   */
   public static BlackVolatilitySmileFxProvider createVolatilitySmileProvider6(ZonedDateTime dateTime) {
     return BlackVolatilitySmileFxProvider.of(SMILE_TERM_6, CURRENCY_PAIR, ACT_365F, dateTime);
   }
 
+  /**
+   * Get the underlying smile term structure. 
+   * <p>
+   * The number of time slices are 5, and the day count convention is ACT/ACT ISDA. 
+   * 
+   * @return the smile term structure
+   */
   public static InterpolatedSmileDeltaTermStructureStrikeInterpolation getSmileDeltaTermStructure5() {
     return SMILE_TERM_5;
   }
 
+  /**
+   * Get the underlying smile term structure. 
+   * <p>
+   * The number of time slices are 6, and the day count convention is ACT/365F.
+   * 
+   * @return the smile term structure
+   */
   public static InterpolatedSmileDeltaTermStructureStrikeInterpolation getSmileDeltaTermStructure6() {
     return SMILE_TERM_6;
   }
