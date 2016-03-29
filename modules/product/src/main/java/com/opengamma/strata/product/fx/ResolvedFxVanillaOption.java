@@ -100,7 +100,11 @@ public final class ResolvedFxVanillaOption
   }
 
   /**
-   * Gets the put/call
+   * Returns the put/call flag.
+   * <p>
+   * This is the put/call for the base currency. 
+   * If the amount for the base currency is positive, the option is a call on the base currency (put on counter currency). 
+   * If the amount for the base currency is negative, the option is a put on the base currency (call on counter currency).
    * 
    * @return the put or call
    */

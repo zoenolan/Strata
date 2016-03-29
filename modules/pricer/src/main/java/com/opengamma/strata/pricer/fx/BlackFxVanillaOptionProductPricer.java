@@ -63,7 +63,9 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the price of the foreign exchange vanilla option product.
    * <p>
-   * The price of the product is the value on the valuation date.
+   * The price of the product is the value on the valuation date for one unit of the base currency 
+   * and is expressed in the counter currency. The price does not take into account the long/short flag. 
+   * See {@link #presentValue} for scaling and currency.
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -84,7 +86,8 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the present value of the foreign exchange vanilla option product.
    * <p>
-   * The present value of the product is the value on the valuation date.
+   * The present value of the product is the value on the valuation date. 
+   * It is expressed in the counter currency.
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -127,7 +130,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the delta of the foreign exchange vanilla option product.
    * <p>
-   * The delta is the first derivative of the option price with respect to spot. 
+   * The delta is the first derivative of {@link #price} with respect to spot. 
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -150,7 +153,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the present value delta of the foreign exchange vanilla option product.
    * <p>
-   * The present value delta is the first derivative of the present value with respect to spot. 
+   * The present value delta is the first derivative of {@link #presentValue} with respect to spot. 
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -169,7 +172,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the present value sensitivity of the foreign exchange vanilla option product.
    * <p>
-   * The present value sensitivity of the product is the sensitivity of the present value to
+   * The present value sensitivity of the product is the sensitivity of {@link #presentValue} to
    * the underlying curves.
    * <p>
    * The volatility is fixed in this sensitivity computation.
@@ -227,7 +230,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the gamma of the foreign exchange vanilla option product.
    * <p>
-   * The gamma is the second derivative of the option price with respect to spot. 
+   * The gamma is the second derivative of {@link #price} with respect to spot. 
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -260,7 +263,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the present value delta of the foreign exchange vanilla option product.
    * <p>
-   * The present value gamma is the second derivative of the present value with respect to spot. 
+   * The present value gamma is the second derivative of the {@link #presentValue} with respect to spot. 
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -280,7 +283,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the vega of the foreign exchange vanilla option product.
    * <p>
-   * The vega is the first derivative of the option price with respect to volatility. 
+   * The vega is the first derivative of {@link #price} with respect to volatility. 
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -310,7 +313,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the present value vega of the foreign exchange vanilla option product.
    * <p>
-   * The present value vega is the first derivative of the present value with respect to volatility. 
+   * The present value vega is the first derivative of the {@link #presentValue} with respect to volatility. 
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -356,7 +359,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the Black theta of the foreign exchange vanilla option product.
    * <p>
-   * The theta is the negative of the first derivative of the option price with respect to time parameter
+   * The theta is the negative of the first derivative of {@link #price} with respect to time parameter
    * in Black formula (the discounted driftless theta).
    * 
    * @param option  the option product
@@ -388,7 +391,7 @@ public class BlackFxVanillaOptionProductPricer {
   /**
    * Calculates the present value theta of the foreign exchange vanilla option product.
    * <p>
-   * The present value theta is the negative of the first derivative of the present value with time parameter
+   * The present value theta is the negative of the first derivative of {@link #presentValue} with time parameter
    * in Black formula, i.e., the driftless theta of the present value.
    * 
    * @param option  the option product
