@@ -11,8 +11,6 @@ import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.math.impl.statistics.distribution.NormalDistribution;
 import com.opengamma.strata.math.impl.statistics.distribution.ProbabilityDistribution;
-import com.opengamma.strata.product.fx.BarrierType;
-import com.opengamma.strata.product.fx.KnockType;
 import com.opengamma.strata.product.fx.SimpleConstantContinuousBarrier;
 
 /**
@@ -55,13 +53,13 @@ public class BlackBarrierPriceFormulaRepository {
       SimpleConstantContinuousBarrier barrier) {
 
     ArgChecker.notNull(barrier, "barrier");
-    boolean isKnockIn = (barrier.getKnockType() == KnockType.KNOCK_IN);
-    boolean isDown = (barrier.getBarrierType() == BarrierType.DOWN);
+    boolean isKnockIn = barrier.getKnockType().isKnockIn();
+    boolean isDown = barrier.getBarrierType().isDown();
     double h = barrier.getBarrierLevel();
-    ArgChecker.isTrue(!(barrier.getBarrierType() == BarrierType.DOWN && spot <= barrier.getBarrierLevel()),
-        "The Data is not consistent with an alive barrier (DOWN and spot < barrier).");
-    ArgChecker.isTrue(!(barrier.getBarrierType() == BarrierType.UP && spot >= barrier.getBarrierLevel()),
-        "The Data is not consistent with an alive barrier (UP and spot > barrier).");
+    ArgChecker.isFalse(isDown && spot <= barrier.getBarrierLevel(),
+        "The Data is not consistent with an alive barrier (DOWN and spot<=barrier).");
+    ArgChecker.isFalse(!isDown && spot >= barrier.getBarrierLevel(),
+        "The Data is not consistent with an alive barrier (UP and spot>=barrier).");
     int phi = isCall ? 1 : -1;
     double eta = isDown ? 1 : -1;
     double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));
@@ -138,13 +136,13 @@ public class BlackBarrierPriceFormulaRepository {
 
     ArgChecker.notNull(barrier, "barrier");
     double[] derivatives = new double[7];
-    boolean isKnockIn = (barrier.getKnockType() == KnockType.KNOCK_IN);
-    boolean isDown = (barrier.getBarrierType() == BarrierType.DOWN);
+    boolean isKnockIn = barrier.getKnockType().isKnockIn();
+    boolean isDown = barrier.getBarrierType().isDown();
     double h = barrier.getBarrierLevel();
-    ArgChecker.isTrue(!(barrier.getBarrierType() == BarrierType.DOWN && spot <= barrier.getBarrierLevel()),
-        "The Data is not consistent with an alive barrier (DOWN and spot<barrier).");
-    ArgChecker.isTrue(!(barrier.getBarrierType() == BarrierType.UP && spot >= barrier.getBarrierLevel()),
-        "The Data is not consistent with an alive barrier (UP and spot>barrier).");
+    ArgChecker.isFalse(isDown && spot <= barrier.getBarrierLevel(),
+        "The Data is not consistent with an alive barrier (DOWN and spot<=barrier).");
+    ArgChecker.isFalse(!isDown && spot >= barrier.getBarrierLevel(),
+        "The Data is not consistent with an alive barrier (UP and spot>=barrier).");
     int phi = isCall ? 1 : -1;
     double eta = isDown ? 1 : -1;
     double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));

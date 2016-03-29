@@ -28,7 +28,7 @@ import org.joda.beans.impl.direct.DirectMetaPropertyMap;
  * <p>
  * This defines a simple continuous barrier with a constant barrier level. 
  * It is assumed that the barrier event period agrees with the lifetime of the option, thus observation start date and 
- * end date are not specified.
+ * end date are not specified in this class.
  */
 @BeanDefinition
 public final class SimpleConstantContinuousBarrier
