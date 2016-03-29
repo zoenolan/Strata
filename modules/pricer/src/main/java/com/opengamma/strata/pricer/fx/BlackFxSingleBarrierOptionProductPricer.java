@@ -1,8 +1,14 @@
+/**
+ * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
+ *
+ * Please see distribution for license.
+ */
 package com.opengamma.strata.pricer.fx;
 
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.CurrencyPair;
+import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
 import com.opengamma.strata.basics.value.ValueDerivatives;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.array.DoubleArray;
@@ -19,6 +25,14 @@ import com.opengamma.strata.product.fx.ResolvedFxSingleBarrierOption;
 import com.opengamma.strata.product.fx.ResolvedFxVanillaOption;
 import com.opengamma.strata.product.fx.SimpleConstantContinuousBarrier;
 
+/**
+ * Pricer for FX barrier option products in Black-Scholes world.
+ * <p>
+ * This function provides the ability to price an {@link ResolvedFxSingleBarrierOption}.
+ * <p>
+ * All of the computation is be based on the counter currency of the underlying FX transaction. 
+ * For example, price, PV and risk measures of the product will be expressed in USD for an option on EUR/USD.
+ */
 public class BlackFxSingleBarrierOptionProductPricer {
 
   /**
@@ -49,8 +63,8 @@ public class BlackFxSingleBarrierOptionProductPricer {
   /**
    * Calculates the present value of the FX barrier option product.
    * <p>
-   * The present value of the product is the value on the valuation date.
-   * The price is represented in counter currency. 
+   * The present value of the product is the value on the valuation date. 
+   * It is expressed in the counter currency.
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -70,8 +84,9 @@ public class BlackFxSingleBarrierOptionProductPricer {
   /**
    * Calculates the price of the FX barrier option product.
    * <p>
-   * The price of the product is the value on the valuation date.
-   * The price is represented in units of counter currency. 
+   * The price of the product is the value on the valuation date for one unit of the base currency 
+   * and is expressed in the counter currency. The price does not take into account the long/short flag. 
+   * See {@link #presentValue} for scaling and currency.
    * 
    * @param option  the option product
    * @param ratesProvider  the rates provider
@@ -116,6 +131,19 @@ public class BlackFxSingleBarrierOptionProductPricer {
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value sensitivity of the FX barrier option product.
+   * <p>
+   * The present value sensitivity of the product is the sensitivity of {@link #presentValue} to
+   * the underlying curves.
+   * <p>
+   * The volatility is fixed in this sensitivity computation.
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the present value curve sensitivity of the product
+   */
   public PointSensitivityBuilder presentValueSensitivity(
       ResolvedFxSingleBarrierOption option,
       RatesProvider ratesProvider,
@@ -138,13 +166,107 @@ public class BlackFxSingleBarrierOptionProductPricer {
     return counterSensi.combinedWith(baseSensi);
   }
 
-  public FxOptionSensitivity presentValueSensitivityVolatility(
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value delta of the FX barrier option product.
+   * <p>
+   * The present value delta is the first derivative of {@link #presentValue} with respect to spot. 
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the present value delta of the product
+   */
+  public CurrencyAmount presentValueDelta(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    double delta = delta(option, ratesProvider, volatilityProvider);
+    ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    return CurrencyAmount.of(underlyingOption.getCounterCurrency(), signedNotional(underlyingOption) * delta);
+  }
+
+  /**
+   * Calculates the delta of the FX barrier option product.
+   * <p>
+   * The delta is the first derivative of {@link #price} with respect to spot. 
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the delta of the product
+   */
+  public double delta(
       ResolvedFxSingleBarrierOption option,
       RatesProvider ratesProvider,
       BlackVolatilityFxProvider volatilityProvider) {
 
     ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
+    return priceDerivatives.getDerivative(0);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value gamma of the FX barrier option product.
+   * <p>
+   * The present value gamma is the second derivative of {@link #presentValue} with respect to spot. 
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the present value gamma of the product
+   */
+  public CurrencyAmount presentValueGamma(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    double gamma = gamma(option, ratesProvider, volatilityProvider);
     ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    return CurrencyAmount.of(underlyingOption.getCounterCurrency(), signedNotional(underlyingOption) * gamma);
+  }
+
+  /**
+   * Calculates the gamma of the FX barrier option product.
+   * <p>
+   * The delta is the second derivative of {@link #price} with respect to spot. 
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the gamma of the product
+   */
+  public double gamma(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
+    return priceDerivatives.getDerivative(6);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Computes the present value sensitivity to the black volatility used in the pricing.
+   * <p>
+   * The result is a single sensitivity to the volatility used. This is also called Black vega.
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the present value sensitivity
+   */
+  public PointSensitivityBuilder presentValueSensitivityVolatility(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    if (volatilityProvider.relativeTime(underlyingOption.getExpiry()) <= 0d) {
+      return PointSensitivityBuilder.none();
+    }
+    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
     ResolvedFxSingle underlyingFx = underlyingOption.getUnderlying();
     CurrencyPair currencyPair = underlyingFx.getCurrencyPair();
     Currency ccyBase = currencyPair.getBase();
@@ -162,9 +284,93 @@ public class BlackFxSingleBarrierOptionProductPricer {
         priceDerivatives.getDerivative(4) * signedNotional(underlyingOption));
   }
 
+  /**
+   * Calculates the vega of the FX barrier option product.
+   * <p>
+   * The delta is the first derivative of {@link #price} with respect to Black volatility. 
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the vega of the product
+   */
+  public double vega(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
+    return priceDerivatives.getDerivative(4);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value theta of the FX barrier option product.
+   * <p>
+   * The present value theta is the negative of the first derivative of {@link #presentValue} with time parameter.
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the present value theta of the product
+   */
+  public CurrencyAmount presentValueTheta(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    double theta = theta(option, ratesProvider, volatilityProvider);
+    ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    return CurrencyAmount.of(underlyingOption.getCounterCurrency(), signedNotional(underlyingOption) * theta);
+  }
+
+  /**
+   * Calculates the theta of the FX barrier option product.
+   * <p>
+   * The theta is the negative of the first derivative of {@link #price} with respect to time parameter.
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the theta of the product
+   */
+  public double theta(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
+    return -priceDerivatives.getDerivative(5);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the currency exposure of the FX barrier option product.
+   * 
+   * @param option  the option product
+   * @param ratesProvider  the rates provider
+   * @param volatilityProvider  the Black volatility provider
+   * @return the currency exposure
+   */
+  public MultiCurrencyAmount currencyExposure(
+      ResolvedFxSingleBarrierOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilityFxProvider volatilityProvider) {
+
+    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
+    double price = priceDerivatives.getValue();
+    double delta = priceDerivatives.getDerivative(0);
+    ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    CurrencyPair currencyPair = underlyingOption.getUnderlying().getCurrencyPair();
+    double spot = ratesProvider.fxRate(currencyPair);
+    double signedNotional = signedNotional(underlyingOption);
+    CurrencyAmount domestic = CurrencyAmount.of(currencyPair.getCounter(), (price - delta * spot) * signedNotional);
+    CurrencyAmount foreign = CurrencyAmount.of(currencyPair.getBase(), delta * signedNotional);
+    return MultiCurrencyAmount.of(domestic, foreign);
+  }
+
   //-------------------------------------------------------------------------
   //  The derivatives are [0] spot, [1] strike, [2] rate, [3] cost-of-carry, [4] volatility, [5] timeToExpiry, [6] spot twice
-  // [0] spot, [1] rate, [2] cost-of-carry, [3] volatility, [4] timeToExpiry, [5] spot twice. 
   private ValueDerivatives priceDerivatives(
       ResolvedFxSingleBarrierOption option,
       RatesProvider ratesProvider,

@@ -61,6 +61,8 @@ public final class FxSingleBarrierOption
    * <p>
    * The barrier level stored in this field must be represented based on the direction of the currency pair in the 
    * underlying FX transaction. 
+   * <p>
+   * For example, if the underlying option is an option on EUR/GBP, the barrier should be a certain level of EUR/GBP rate.
    */
   @PropertyDefinition(validate = "notNull")
   private final Barrier barrier;
@@ -68,6 +70,7 @@ public final class FxSingleBarrierOption
    * The amount paid back to the option holder in case the option becomes inactive.
    * <p>
    * This is the notional amount represented in one of the currency pair. 
+   * The amount should be positive. 
    */
   @PropertyDefinition(get = "optional")
   private final CurrencyAmount rebate;
@@ -176,6 +179,8 @@ public final class FxSingleBarrierOption
    * <p>
    * The barrier level stored in this field must be represented based on the direction of the currency pair in the
    * underlying FX transaction.
+   * <p>
+   * For example, if the underlying option is an option on EUR/GBP, the barrier should be a certain level of EUR/GBP rate.
    * @return the value of the property, not null
    */
   public Barrier getBarrier() {
@@ -187,6 +192,7 @@ public final class FxSingleBarrierOption
    * Gets the amount paid back to the option holder in case the option becomes inactive.
    * <p>
    * This is the notional amount represented in one of the currency pair.
+   * The amount should be positive.
    * @return the optional value of the property, not null
    */
   public Optional<CurrencyAmount> getRebate() {
