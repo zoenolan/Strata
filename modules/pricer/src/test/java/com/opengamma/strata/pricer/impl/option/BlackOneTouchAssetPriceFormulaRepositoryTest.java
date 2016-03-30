@@ -55,10 +55,10 @@ public class BlackOneTouchAssetPriceFormulaRepositoryTest {
    * standard in-out parity holds if r=0.
    */
   public void inOutParity() {
-    double upIn = PRICER.price(SPOT, EXPIRY_TIME, 0d, 0d, VOLATILITY, BARRIER_UP_IN);
-    double upOut = PRICER.price(SPOT, EXPIRY_TIME, 0d, 0d, VOLATILITY, BARRIER_UP_OUT);
-    double downIn = PRICER.price(SPOT, EXPIRY_TIME, 0d, 0d, VOLATILITY, BARRIER_DOWN_IN);
-    double downOut = PRICER.price(SPOT, EXPIRY_TIME, 0d, 0d, VOLATILITY, BARRIER_DOWN_OUT);
+    double upIn = PRICER.price(SPOT, EXPIRY_TIME, RATE_DOM, RATE_DOM, VOLATILITY, BARRIER_UP_IN);
+    double upOut = PRICER.price(SPOT, EXPIRY_TIME, RATE_DOM, RATE_DOM, VOLATILITY, BARRIER_UP_OUT);
+    double downIn = PRICER.price(SPOT, EXPIRY_TIME, RATE_DOM, RATE_DOM, VOLATILITY, BARRIER_DOWN_IN);
+    double downOut = PRICER.price(SPOT, EXPIRY_TIME, RATE_DOM, RATE_DOM, VOLATILITY, BARRIER_DOWN_OUT);
     assertRelative(upIn + upOut, SPOT, TOL);
     assertRelative(downIn + downOut, SPOT, TOL);
   }

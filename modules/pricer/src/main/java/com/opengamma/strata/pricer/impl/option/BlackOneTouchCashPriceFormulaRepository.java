@@ -231,12 +231,10 @@ public class BlackOneTouchCashPriceFormulaRepository {
       double[] firstDerivatives,
       double[] secondDerivatives) {
 
-    //  Forward sweep
     double n1 = NORMAL.getCDF(eta * (x - lognormalVolT));
     double n2 = NORMAL.getCDF(eta * (y - lognormalVolT));
     double hsMu = Math.pow(h / s, 2 * mu);
     double e = df2 * (n1 - hsMu * n2);
-    // Backward sweep
     double n1df = NORMAL.getPDF(eta * (x - lognormalVolT));
     double n2df = NORMAL.getPDF(eta * (y - lognormalVolT));
     double hsMuBar = df2 * -n2;
@@ -248,7 +246,6 @@ public class BlackOneTouchCashPriceFormulaRepository {
     firstDerivatives[3] = n2df * eta * n2Bar; // y
     firstDerivatives[4] = n2df * -eta * n2Bar + n1df * -eta * n1Bar; // lognormalVolT
     firstDerivatives[5] = 2d * Math.log(h / s) * hsMu * hsMuBar; // mu
-
     secondDerivatives[0] = hsMu * hsMuBar * 2d * mu * (2d * mu + 1d) / (s * s);
     secondDerivatives[1] = -n1df * n1Bar * (x - lognormalVolT) * eta;
     secondDerivatives[2] = -n2df * n2Bar * (y - lognormalVolT) * eta;
@@ -268,13 +265,12 @@ public class BlackOneTouchCashPriceFormulaRepository {
       double eta,
       double[] firstDerivatives,
       double[] secondDerivatives) {
-    //  Forward sweep
+
     double n1 = NORMAL.getCDF(eta * z);
     double n2 = NORMAL.getCDF(eta * (z - 2 * lambda * lognormalVolT));
     double hsMuPLa = Math.pow(h / s, mu + lambda);
     double hsMuMLa = Math.pow(h / s, mu - lambda);
     double f = hsMuPLa * n1 + hsMuMLa * n2;
-    // Backward sweep
     double fBar = 1.0;
     double n1df = NORMAL.getPDF(eta * z);
     double n2df = NORMAL.getPDF(eta * (z - 2 * lambda * lognormalVolT));
@@ -287,7 +283,6 @@ public class BlackOneTouchCashPriceFormulaRepository {
     firstDerivatives[2] = -n2df * eta * 2 * lambda * n2Bar; //lognormalVolT
     firstDerivatives[3] = hsMuPLa * Math.log(h / s) * hsMuPLaBar + hsMuMLa * Math.log(h / s) * hsMuMLaBar; // mu
     firstDerivatives[4] = hsMuPLa * Math.log(h / s) * hsMuPLaBar - hsMuMLa * Math.log(h / s) * hsMuMLaBar; // lambda
-
     secondDerivatives[0] = hsMuPLa * hsMuPLaBar * (mu + lambda) * (mu + lambda + 1d) / (s * s)
         + hsMuMLa * hsMuMLaBar * (mu - lambda) * (mu - lambda + 1d) / (s * s);
     secondDerivatives[1] = -z * n1df * eta * n1Bar - (z - 2 * lambda * lognormalVolT) * n2df * eta * n2Bar;

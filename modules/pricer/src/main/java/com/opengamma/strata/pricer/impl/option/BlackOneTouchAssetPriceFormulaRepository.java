@@ -55,16 +55,15 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     boolean isDown = barrier.getBarrierType().isDown();
     double h = barrier.getBarrierLevel();
     ArgChecker.isFalse(isDown && spot <= barrier.getBarrierLevel(),
-        "The Data is not consistent with an alive barrier (DOWN and spot<barrier).");
+        "The Data is not consistent with an alive barrier (DOWN and spot<=barrier).");
     ArgChecker.isFalse(!isDown && spot >= barrier.getBarrierLevel(),
-        "The Data is not consistent with an alive barrier (UP and spot>barrier).");
+        "The Data is not consistent with an alive barrier (UP and spot>=barrier).");
     double eta = isDown ? 1 : -1;
     double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));
-    double df2 = Math.exp(-rate * timeToExpiry);
     double lognormalVolSq = lognormalVol * lognormalVol;
     double lognormalVolT = lognormalVol * Math.sqrt(timeToExpiry);
     if (DoubleMath.fuzzyEquals(Math.min(timeToExpiry, lognormalVolSq), 0d, SMALL)) {
-      return isKnockIn ? 0d : df2 * spot * df1;
+      return isKnockIn ? 0d : spot * df1;
     }
     double mu = (costOfCarry - 0.5 * lognormalVolSq) / lognormalVolSq;
     double lambda = Math.sqrt(mu * mu + 2 * rate / lognormalVolSq);
@@ -73,7 +72,7 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double y2 = Math.log(h / spot) / lognormalVolT + m1;
     double z = Math.log(h / spot) / lognormalVolT + lambda * lognormalVolT;
     double xE = isKnockIn ? getF(spot, z, lognormalVolT, h, mu, lambda, eta, h) :
-        getE(spot, df1, df2, x2, y2, h, mu, eta);
+        getE(spot, df1, x2, y2, h, mu, eta);
     return xE;
   }
 
@@ -110,7 +109,6 @@ public class BlackOneTouchAssetPriceFormulaRepository {
 
     double eta = isDown ? 1 : -1;
     double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));
-    double df2 = Math.exp(-rate * timeToExpiry);
     double lognormalVolSq = lognormalVol * lognormalVol;
     double lognormalVolT = lognormalVol * Math.sqrt(timeToExpiry);
     if (DoubleMath.fuzzyEquals(Math.min(timeToExpiry, lognormalVolSq), 0d, SMALL)) {
@@ -136,7 +134,7 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double[] fDerivSecond = new double[5];
     double price = isKnockIn ?
         getFAdjoint(spot, z, lognormalVolT, h, mu, lambda, eta, h, fDerivFirst, fDerivSecond) :
-        getEAdjoint(spot, df1, df2, x2, y2, h, mu, eta, eDerivFirst, eDerivSecond);
+        getEAdjoint(spot, df1, x2, y2, h, mu, eta, eDerivFirst, eDerivSecond);
     double zBar = 0.0;
     double y2Bar = 0.0;
     double x2Bar = 0.0;
@@ -150,7 +148,6 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double muBar = 0.0;
     double lognormalVolTBar = 0.0;
     double df1Bar = 0.0;
-    double df2Bar = 0.0;
     if (isKnockIn) {
       zBar = fDerivFirst[1];
       lambdaBar = fDerivFirst[4];
@@ -161,11 +158,10 @@ public class BlackOneTouchAssetPriceFormulaRepository {
       zsBar = fDerivSecond[2];
       derivatives[5] = fDerivSecond[0];
     } else {
-      y2Bar = eDerivFirst[4];
-      x2Bar = eDerivFirst[3];
-      muBar = eDerivFirst[5];
+      y2Bar = eDerivFirst[3];
+      x2Bar = eDerivFirst[2];
+      muBar = eDerivFirst[4];
       df1Bar = eDerivFirst[1];
-      df2Bar = eDerivFirst[2];
       derivatives[0] = eDerivFirst[0];
       x2SqBar = eDerivSecond[1];
       y2SqBar = eDerivSecond[2];
@@ -184,11 +180,10 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double lognormalVolSqBar = -costOfCarry / (lognormalVolSq * lognormalVolSq) * muBar - rate /
         (lognormalVolSq * lognormalVolSq) / lambda * lambdaBar;
     derivatives[0] += dxyds * x2Bar - dxyds * y2Bar - dxyds * zBar;
-    derivatives[1] =
-        -timeToExpiry * df2 * df2Bar + 1d / lambda / lognormalVolSq * lambdaBar - timeToExpiry * df1 * df1Bar;
+    derivatives[1] = 1d / lambda / lognormalVolSq * lambdaBar - timeToExpiry * df1 * df1Bar;
     derivatives[2] = 1d / lognormalVolSq * muBar + timeToExpiry * df1 * df1Bar;
     derivatives[3] = 2d * lognormalVol * lognormalVolSqBar + Math.sqrt(timeToExpiry) * lognormalVolTBar;
-    derivatives[4] = -rate * df2 * df2Bar + (costOfCarry - rate) * df1 * df1Bar
+    derivatives[4] = +(costOfCarry - rate) * df1 * df1Bar
         + lognormalVolTBar * lognormalVolT * 0.5 / timeToExpiry;
     derivatives[5] += -dxyds * x2Bar / spot + dxyds * y2Bar / spot + dxyds * zBar / spot
         + dxyds * dxyds * x2SqBar + 2d * dxyds * x2sBar
@@ -201,14 +196,12 @@ public class BlackOneTouchAssetPriceFormulaRepository {
   private double getE(
       double s,
       double df1,
-      double df2,
       double x,
       double y,
       double h,
       double mu,
       double eta) {
-
-    return s * (df1 * NORMAL.getCDF(eta * x) - df2 * Math.pow(h / s, 2d * (mu + 1d)) * NORMAL.getCDF(eta * y));
+    return s * df1 * (NORMAL.getCDF(eta * x) - Math.pow(h / s, 2d * (mu + 1d)) * NORMAL.getCDF(eta * y));
   }
 
   private double getF(
@@ -226,12 +219,11 @@ public class BlackOneTouchAssetPriceFormulaRepository {
   }
 
   //-------------------------------------------------------------------------
-  // The firstDerivatives are [0] s, [1] df1, [2] df2, [3] x, [4] y, [5] mu.
+  // The firstDerivatives are [0] s, [1] df1, [2] x, [3] y, [4] mu.
   // The second derivatives are [0] s twice, [1] x twice, [2] y twice, [3] s and x, [4] s and y.
   private double getEAdjoint(
       double s,
       double df1,
-      double df2,
       double x,
       double y,
       double h,
@@ -240,27 +232,23 @@ public class BlackOneTouchAssetPriceFormulaRepository {
       double[] firstDerivatives,
       double[] secondDerivatives) {
 
-    //  Forward sweep
     double n1 = NORMAL.getCDF(eta * x);
     double n2 = NORMAL.getCDF(eta * y);
-    // Backward sweep
     double n1df = NORMAL.getPDF(x);
     double n2df = NORMAL.getPDF(y);
     double hsMu = Math.pow(h / s, 2d * (mu + 1d));
-    double e = s * (df1 * n1 - df2 * hsMu * n2);
-    firstDerivatives[0] = df1 * n1 - df2 * hsMu * n2 + 2d * (mu + 1d) * df2 * hsMu * n2; // s
-    firstDerivatives[1] = s * n1; // df1;
-    firstDerivatives[2] = -s * hsMu * n2; // df2;
-    firstDerivatives[3] = s * df1 * n1df * eta; // x
-    firstDerivatives[4] = -s * df2 * hsMu * n2df * eta; // y
-    firstDerivatives[5] = -2d * Math.log(h / s) * s * df2 * hsMu * n2; // mu
-
+    double e = s * df1 * (n1 - hsMu * n2);
+    firstDerivatives[0] = df1 * n1 - df1 * hsMu * n2 + 2d * (mu + 1d) * df1 * hsMu * n2; // s
+    firstDerivatives[1] = s * (n1 - hsMu * n2); // df1;
+    firstDerivatives[2] = s * df1 * n1df * eta; // x
+    firstDerivatives[3] = -s * df1 * hsMu * n2df * eta; // y
+    firstDerivatives[4] = -2d * Math.log(h / s) * s * df1 * hsMu * n2; // mu
     secondDerivatives[0] =
-        -hsMu * n2 * 2d * (mu + 1d) * (2d * mu + 3d) * df2 / s + hsMu * n2 * 4d * (mu + 1d) * df2 / s;
+        -hsMu * n2 * 2d * (mu + 1d) * (2d * mu + 3d) * df1 / s + hsMu * n2 * 4d * (mu + 1d) * df1 / s;
     secondDerivatives[1] = -s * df1 * n1df * eta * x;
-    secondDerivatives[2] = hsMu * n2df * s * df2 * eta * y;
+    secondDerivatives[2] = hsMu * n2df * s * df1 * eta * y;
     secondDerivatives[3] = df1 * n1df * eta;
-    secondDerivatives[4] = -hsMu * n2df * df2 * eta + hsMu * n2df * 2d * (mu + 1d) * df2 * eta;
+    secondDerivatives[4] = -hsMu * n2df * df1 * eta + hsMu * n2df * 2d * (mu + 1d) * df1 * eta;
     return e;
   }
 
@@ -277,13 +265,12 @@ public class BlackOneTouchAssetPriceFormulaRepository {
       double barrier,
       double[] firstDerivatives,
       double[] secondDerivatives) {
-    //  Forward sweep
+
     double n1 = NORMAL.getCDF(eta * z);
     double n2 = NORMAL.getCDF(eta * (z - 2 * lambda * lognormalVolT));
     double hsMuPLa = Math.pow(h / s, mu + lambda);
     double hsMuMLa = Math.pow(h / s, mu - lambda);
     double f = barrier * (hsMuPLa * n1 + hsMuMLa * n2);
-    // Backward sweep
     double fBar = 1.0;
     double n1df = NORMAL.getPDF(eta * z);
     double n2df = NORMAL.getPDF(eta * (z - 2 * lambda * lognormalVolT));
@@ -297,7 +284,6 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     firstDerivatives[2] = barrier * (-n2df * eta * 2 * lambda * n2Bar); //lognormalVolT
     firstDerivatives[3] = barrier * (hsMuPLa * Math.log(h / s) * hsMuPLaBar + hsMuMLa * Math.log(h / s) * hsMuMLaBar); // mu
     firstDerivatives[4] = barrier * (hsMuPLa * Math.log(h / s) * hsMuPLaBar - hsMuMLa * Math.log(h / s) * hsMuMLaBar); // lambda
-
     secondDerivatives[0] = barrier * (hsMuPLa * hsMuPLaBar * (mu + lambda) * (mu + lambda + 1d) / (s * s)
         + hsMuMLa * hsMuMLaBar * (mu - lambda) * (mu - lambda + 1d) / (s * s));
     secondDerivatives[1] = barrier * (-z * n1df * eta * n1Bar - (z - 2 * lambda * lognormalVolT) * n2df * eta * n2Bar);

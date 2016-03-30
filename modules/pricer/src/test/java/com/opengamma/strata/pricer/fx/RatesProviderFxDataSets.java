@@ -20,6 +20,7 @@ import com.opengamma.strata.basics.market.ReferenceData;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.curve.CurveMetadata;
+import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.interpolator.CurveInterpolator;
@@ -156,6 +157,25 @@ public class RatesProviderFxDataSets {
         .discountCurve(USD, USD_DSC_ISDA)
         .fxRateProvider(fxMatrix)
         .build();
+  }
+
+  /**
+   * Get the curve name of the curve for a given currency.
+   * 
+   * @param currency the currency
+   * @return the curve name
+   */
+  public static CurveName getCurveName(Currency currency) {
+    if (currency.equals(EUR)) {
+      return EUR_DSC.getName();
+    }
+    if (currency.equals(USD)) {
+      return USD_DSC.getName();
+    }
+    if (currency.equals(GBP)) {
+      return GBP_DSC.getName();
+    }
+    throw new IllegalArgumentException();
   }
 
   /**
