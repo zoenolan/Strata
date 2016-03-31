@@ -22,6 +22,7 @@ import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.BeanBuilder;
 
 /**
  * Continuous barrier with constant barrier level.
@@ -30,7 +31,7 @@ import org.joda.beans.impl.direct.DirectMetaPropertyMap;
  * It is assumed that the barrier event period agrees with the lifetime of the option, thus observation start date and 
  * end date are not specified in this class.
  */
-@BeanDefinition
+@BeanDefinition(builderScope = "private")
 public final class SimpleConstantContinuousBarrier
     implements Barrier, ImmutableBean, Serializable {
 
@@ -94,14 +95,6 @@ public final class SimpleConstantContinuousBarrier
    */
   private static final long serialVersionUID = 1L;
 
-  /**
-   * Returns a builder used to create an instance of the bean.
-   * @return the builder, not null
-   */
-  public static SimpleConstantContinuousBarrier.Builder builder() {
-    return new SimpleConstantContinuousBarrier.Builder();
-  }
-
   private SimpleConstantContinuousBarrier(
       BarrierType barrierType,
       KnockType knockType,
@@ -158,14 +151,6 @@ public final class SimpleConstantContinuousBarrier
   }
 
   //-----------------------------------------------------------------------
-  /**
-   * Returns a builder that allows this bean to be mutated.
-   * @return the mutable builder, not null
-   */
-  public Builder toBuilder() {
-    return new Builder(this);
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (obj == this) {
@@ -254,7 +239,7 @@ public final class SimpleConstantContinuousBarrier
     }
 
     @Override
-    public SimpleConstantContinuousBarrier.Builder builder() {
+    public BeanBuilder<? extends SimpleConstantContinuousBarrier> builder() {
       return new SimpleConstantContinuousBarrier.Builder();
     }
 
@@ -322,7 +307,7 @@ public final class SimpleConstantContinuousBarrier
   /**
    * The bean-builder for {@code SimpleConstantContinuousBarrier}.
    */
-  public static final class Builder extends DirectFieldsBeanBuilder<SimpleConstantContinuousBarrier> {
+  private static final class Builder extends DirectFieldsBeanBuilder<SimpleConstantContinuousBarrier> {
 
     private BarrierType barrierType;
     private KnockType knockType;
@@ -332,16 +317,6 @@ public final class SimpleConstantContinuousBarrier
      * Restricted constructor.
      */
     private Builder() {
-    }
-
-    /**
-     * Restricted copy constructor.
-     * @param beanToCopy  the bean to copy from, not null
-     */
-    private Builder(SimpleConstantContinuousBarrier beanToCopy) {
-      this.barrierType = beanToCopy.getBarrierType();
-      this.knockType = beanToCopy.getKnockType();
-      this.barrierLevel = beanToCopy.getBarrierLevel();
     }
 
     //-----------------------------------------------------------------------
@@ -407,39 +382,6 @@ public final class SimpleConstantContinuousBarrier
           barrierType,
           knockType,
           barrierLevel);
-    }
-
-    //-----------------------------------------------------------------------
-    /**
-     * Sets the barrier type.
-     * @param barrierType  the new value, not null
-     * @return this, for chaining, not null
-     */
-    public Builder barrierType(BarrierType barrierType) {
-      JodaBeanUtils.notNull(barrierType, "barrierType");
-      this.barrierType = barrierType;
-      return this;
-    }
-
-    /**
-     * Sets the knock type.
-     * @param knockType  the new value, not null
-     * @return this, for chaining, not null
-     */
-    public Builder knockType(KnockType knockType) {
-      JodaBeanUtils.notNull(knockType, "knockType");
-      this.knockType = knockType;
-      return this;
-    }
-
-    /**
-     * Sets the barrier level.
-     * @param barrierLevel  the new value
-     * @return this, for chaining, not null
-     */
-    public Builder barrierLevel(double barrierLevel) {
-      this.barrierLevel = barrierLevel;
-      return this;
     }
 
     //-----------------------------------------------------------------------

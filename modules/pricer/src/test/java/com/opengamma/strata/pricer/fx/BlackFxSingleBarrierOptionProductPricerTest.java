@@ -34,12 +34,10 @@ public class BlackFxSingleBarrierOptionProductPricerTest {
   private static final ZoneId ZONE = ZoneId.of("Z");
   private static final LocalDate VAL_DATE = LocalDate.of(2011, 6, 13);
   private static final ZonedDateTime VAL_DATETIME = VAL_DATE.atStartOfDay(ZONE);
-
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER =
       FxVolatilitySmileDataSet.createVolatilitySmileProvider5(VAL_DATETIME);
   private static final RatesProvider RATE_PROVIDER =
       RatesProviderFxDataSets.createProviderEurUsdActActIsda(VAL_DATE);
-
   private static final CurrencyPair CURRENCY_PAIR = CurrencyPair.of(EUR, USD);
   private static final double SPOT = RATE_PROVIDER.fxRate(CURRENCY_PAIR);
   private static final double NOTIONAL = 100_000_000d;
@@ -50,14 +48,11 @@ public class BlackFxSingleBarrierOptionProductPricerTest {
       BarrierType.DOWN, KnockType.KNOCK_OUT, LEVEL);
   private static final CurrencyAmount REBATE = CurrencyAmount.of(USD, 50_000d);
   private static final CurrencyAmount REBATE_BASE = CurrencyAmount.of(EUR, 50_000d);
-
   private static final LocalDate PAY_DATE = LocalDate.of(2014, 9, 15);
   private static final ZonedDateTime EXPIRY_DATETIME = PAY_DATE.atStartOfDay(ZONE);
-
   private static final double STRIKE_RATE = 1.45;
   private static final CurrencyAmount EUR_AMOUNT = CurrencyAmount.of(EUR, NOTIONAL);
   private static final CurrencyAmount USD_AMOUNT = CurrencyAmount.of(USD, -NOTIONAL * STRIKE_RATE);
-
   private static final ResolvedFxSingle FX_PRODUCT = ResolvedFxSingle.of(EUR_AMOUNT, USD_AMOUNT, PAY_DATE);
   private static final ResolvedFxVanillaOption CALL = ResolvedFxVanillaOption.builder()
       .longShort(LONG)
@@ -68,7 +63,6 @@ public class BlackFxSingleBarrierOptionProductPricerTest {
       ResolvedFxSingleBarrierOption.of(CALL, BARRIER_KI, REBATE);
   private static final ResolvedFxSingleBarrierOption CALL_KI_BASE =
       ResolvedFxSingleBarrierOption.of(CALL, BARRIER_KI, REBATE_BASE);
-
   private static final BlackFxSingleBarrierOptionProductPricer PRICER = BlackFxSingleBarrierOptionProductPricer.DEFAULT;
   private static final double TOL = 1.0e-12;
 
