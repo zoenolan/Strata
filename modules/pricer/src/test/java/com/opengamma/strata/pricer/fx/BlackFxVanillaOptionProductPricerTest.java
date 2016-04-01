@@ -53,7 +53,6 @@ public class BlackFxVanillaOptionProductPricerTest {
       RatesProviderFxDataSets.createProviderEURUSD(EXPIRY.toLocalDate());
   private static final RatesProvider RATES_PROVIDER_AFTER =
       RatesProviderFxDataSets.createProviderEURUSD(VAL_DATE_AFTER);
-
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER =
       FxVolatilitySmileDataSet.createVolatilitySmileProvider6(VAL_DATETIME);
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER_EXPIRY =
