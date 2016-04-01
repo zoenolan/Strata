@@ -53,17 +53,17 @@ public class BlackFxSingleBarrierOptionProductPricerTest {
   private static final LocalDate PAY_DATE = LocalDate.of(2014, 9, 15);
   private static final LocalDate EXPIRY_DATE = LocalDate.of(2014, 9, 15);
   private static final ZonedDateTime EXPIRY_DATETIME = EXPIRY_DATE.atStartOfDay(ZONE);
-
+  // providers
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER =
       FxVolatilitySmileDataSet.createVolatilitySmileProvider5(VAL_DATETIME);
   private static final ImmutableRatesProvider RATE_PROVIDER =
       RatesProviderFxDataSets.createProviderEurUsdActActIsda(VAL_DATE);
-
+  // providers - valuation at expiry
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER_EXPIRY =
       FxVolatilitySmileDataSet.createVolatilitySmileProvider5(EXPIRY_DATETIME);
   private static final ImmutableRatesProvider RATE_PROVIDER_EXPIRY =
       RatesProviderFxDataSets.createProviderEurUsdActActIsda(EXPIRY_DATE);
-
+  // provider - valuation after expiry
   private static final BlackVolatilitySmileFxProvider VOL_PROVIDER_AFTER =
       FxVolatilitySmileDataSet.createVolatilitySmileProvider5(EXPIRY_DATETIME.plusDays(1));
   private static final ImmutableRatesProvider RATE_PROVIDER_AFTER =
