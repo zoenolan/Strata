@@ -101,6 +101,9 @@ public class BlackFxSingleBarrierOptionProductPricer {
     validate(option, ratesProvider, volatilityProvider);
     SimpleConstantContinuousBarrier barrier = (SimpleConstantContinuousBarrier) option.getBarrier();
     ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    if (volatilityProvider.relativeTime(underlyingOption.getExpiry()) < 0d) {
+      return 0d;
+    }
     ResolvedFxSingle underlyingFx = underlyingOption.getUnderlying();
     Currency ccyBase = underlyingFx.getBaseCurrencyPayment().getCurrency();
     Currency ccyCounter = underlyingFx.getCounterCurrencyPayment().getCurrency();
@@ -149,8 +152,11 @@ public class BlackFxSingleBarrierOptionProductPricer {
       RatesProvider ratesProvider,
       BlackVolatilityFxProvider volatilityProvider) {
 
-    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
     ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    if (volatilityProvider.relativeTime(underlyingOption.getExpiry()) <= 0d) {
+      return PointSensitivityBuilder.none();
+    }
+    ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
     ResolvedFxSingle underlyingFx = underlyingOption.getUnderlying();
     CurrencyPair currencyPair = underlyingFx.getCurrencyPair();
     double signedNotional = signedNotional(underlyingOption);
@@ -202,6 +208,9 @@ public class BlackFxSingleBarrierOptionProductPricer {
       RatesProvider ratesProvider,
       BlackVolatilityFxProvider volatilityProvider) {
 
+    if (volatilityProvider.relativeTime(option.getUnderlyingOption().getExpiry()) < 0d) {
+      return 0d;
+    }
     ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
     return priceDerivatives.getDerivative(0);
   }
@@ -357,10 +366,13 @@ public class BlackFxSingleBarrierOptionProductPricer {
       RatesProvider ratesProvider,
       BlackVolatilityFxProvider volatilityProvider) {
 
+    ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    if (volatilityProvider.relativeTime(underlyingOption.getExpiry()) < 0d) {
+      return MultiCurrencyAmount.empty();
+    }
     ValueDerivatives priceDerivatives = priceDerivatives(option, ratesProvider, volatilityProvider);
     double price = priceDerivatives.getValue();
     double delta = priceDerivatives.getDerivative(0);
-    ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
     CurrencyPair currencyPair = underlyingOption.getUnderlying().getCurrencyPair();
     double spot = ratesProvider.fxRate(currencyPair);
     double signedNotional = signedNotional(underlyingOption);
@@ -379,6 +391,10 @@ public class BlackFxSingleBarrierOptionProductPricer {
     validate(option, ratesProvider, volatilityProvider);
     SimpleConstantContinuousBarrier barrier = (SimpleConstantContinuousBarrier) option.getBarrier();
     ResolvedFxVanillaOption underlyingOption = option.getUnderlyingOption();
+    double[] derivatives = new double[7];
+    if (volatilityProvider.relativeTime(underlyingOption.getExpiry()) < 0d) {
+      return ValueDerivatives.of(0d, DoubleArray.ofUnsafe(derivatives));
+    }
     ResolvedFxSingle underlyingFx = underlyingOption.getUnderlying();
     CurrencyPair currencyPair = underlyingFx.getCurrencyPair();
     Currency ccyBase = currencyPair.getBase();
@@ -407,7 +423,6 @@ public class BlackFxSingleBarrierOptionProductPricer {
         ASSET_REBATE_PRICER.priceAdjoint(spot, timeToExpiry, costOfCarry, rateCounter, volatility, barrier.inverseKnockType());
     double rebateRate = rebate.getAmount() / Math.abs(underlyingFx.getBaseCurrencyPayment().getAmount());
     double price = valueDerivatives.getValue() + rebateRate * valueDerivativesRebate.getValue();
-    double[] derivatives = new double[7];
     derivatives[0] = valueDerivatives.getDerivative(0) + rebateRate * valueDerivativesRebate.getDerivative(0);
     derivatives[1] = valueDerivatives.getDerivative(1);
     for (int i = 2; i < 7; ++i) {

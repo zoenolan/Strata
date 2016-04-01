@@ -40,10 +40,6 @@ public class RatesProviderFxDataSets {
   public static final LocalDate VAL_DATE_2014_01_22 = RatesProviderDataSets.VAL_DATE_2014_01_22;
 
   private static final Currency KRW = Currency.of("KRW");
-  private static final String DISCOUNTING_EUR = "Discounting EUR";
-  private static final String DISCOUNTING_USD = "Discounting USD";
-  private static final String DISCOUNTING_GBP = "Discounting GBP";
-  private static final String DISCOUNTING_KRW = "Discounting KRW";
   private static final double EUR_USD = 1.40;
   private static final double USD_KRW = 1111.11;
   private static final double GBP_USD = 1.50;
@@ -150,7 +146,7 @@ public class RatesProviderFxDataSets {
    * @param valuationDate  the valuation date
    * @return the rates provider
    */
-  public static RatesProvider createProviderEurUsdActActIsda(LocalDate valuationDate) {
+  public static ImmutableRatesProvider createProviderEurUsdActActIsda(LocalDate valuationDate) {
     FxMatrix fxMatrix = FxMatrix.builder().addRate(USD, EUR, 1.0d / EUR_USD).build();
     return ImmutableRatesProvider.builder(valuationDate)
         .discountCurve(EUR, EUR_DSC_ISDA)
