@@ -75,27 +75,28 @@ public class SabrSwaptionCalibrationUtils {
   }
 
   /**
-   * Calibrate SABR parameters to a set of raw swaption normal volatilities. 
+   * Calibrate SABR parameters to a set of raw swaption data. 
    * <p>
    * The SABR parameters are calibrated with fixed beta and shift surfaces.
+   * The raw data can be (shifted) log-normal volatilities, normal volatilities or option prices
    * 
    * @param convention  the swaption underlying convention
    * @param calibrationDateTime  the data and time of the calibration
    * @param dayCount  the day-count used for expiry time computation
    * @param tenors  the tenors associated to the different raw option data
-   * @param normalVolatilities  the list of raw option normal volatility data
+   * @param data  the list of raw option data
    * @param ratesProvider  the rate provider used to compute the swap forward rates
    * @param betaSurface  the beta surface
    * @param shiftSurface  the shift surface
    * @param interpolator  the interpolator for the alpha, rho and nu surfaces
    * @return the SABR volatility object
    */
-  public SabrParametersSwaptionVolatilities calibrateFromNormalVolatilitiesFixedBetaShift(
+  public SabrParametersSwaptionVolatilities calibrateWithFixedBetaAndShift(
       FixedIborSwapConvention convention,
       ZonedDateTime calibrationDateTime,
       DayCount dayCount,
       List<Tenor> tenors,
-      List<RawOptionData> normalVolatilities,
+      List<RawOptionData> data,
       RatesProvider ratesProvider,
       NodalSurface betaSurface,
       NodalSurface shiftSurface, 
@@ -103,6 +104,7 @@ public class SabrSwaptionCalibrationUtils {
     BitSet fixed = new BitSet();
     fixed.set(1); // Beta fixed
     int nbTenors = tenors.size();
+    BusinessDayAdjustment bda = convention.getFloatingLeg().getStartDateBusinessDayAdjustment();
     LocalDate calibrationDate = calibrationDateTime.toLocalDate();
     DoubleArray timeToExpiryArray = DoubleArray.EMPTY;
     DoubleArray timeTenorArray = DoubleArray.EMPTY;
@@ -112,28 +114,49 @@ public class SabrSwaptionCalibrationUtils {
     for (int looptenor = 0; looptenor < nbTenors; looptenor++) {
       double timeTenor = tenors.get(looptenor).getPeriod().getYears() 
           + tenors.get(looptenor).getPeriod().getMonths() / 12;
-      List<Period> expiries = normalVolatilities.get(looptenor).getExpiries();
+      List<Period> expiries = data.get(looptenor).getExpiries();
       int nbExpiries = expiries.size();
       for (int loopexpiry = 0; loopexpiry < nbExpiries; loopexpiry++) {
-        LocalDate exerciseDate = expirationDate(convention.getFloatingLeg().getStartDateBusinessDayAdjustment(),
-            calibrationDate, expiries.get(loopexpiry));
+        
+        Pair<DoubleArray, DoubleArray> availableSmile = data.get(looptenor).availableSmileAtExpiry(expiries.get(loopexpiry));
+        if(availableSmile.getFirst().size() == 0) { // If not data is available, no calibration possible
+          continue; 
+        }
+        
+        LocalDate exerciseDate = expirationDate(bda, calibrationDate, expiries.get(loopexpiry));
         LocalDate effectiveDate = convention.calculateSpotDateFromTradeDate(exerciseDate, REF_DATA);
         double timeToExpiry = dayCount.relativeYearFraction(calibrationDate, exerciseDate);
-        timeToExpiryArray = timeToExpiryArray.concat(new double[] {timeToExpiry });
-        timeTenorArray = timeTenorArray.concat(new double[] {timeTenor });
         double beta = betaSurface.zValue(timeToExpiry, timeTenor);
         double shift = shiftSurface.zValue(timeToExpiry, timeTenor);
         LocalDate endDate = effectiveDate.plus(tenors.get(looptenor));
         SwapTrade swap0 = convention.toTrade(calibrationDate, effectiveDate, endDate, BuySell.BUY, 1.0, 0.0);
         double forward = swapPricer.parRate(swap0.getProduct().resolve(REF_DATA), ratesProvider);
-        Pair<DoubleArray, DoubleArray> availableSmile = normalVolatilities.get(looptenor).availableSmileAtExpiry(expiries.get(loopexpiry));
-        double alphaStart = availableSmile.getSecond().get(0) / Math.pow(forward + shift, beta); // To improve ?
+        timeToExpiryArray = timeToExpiryArray.concat(new double[] {timeToExpiry });
+        timeTenorArray = timeTenorArray.concat(new double[] {timeTenor });
+        double alphaStart = 0.0025 / Math.pow(forward + shift, beta); // To improve ?
         DoubleArray startParameters = DoubleArray.ofUnsafe(new double[] {alphaStart, beta, 0.0, 0.10 }); 
         // TODO: To improve start parameters
-        SabrFormulaData sabrPoint = calibrateShiftedFromNormalVolatilities(
-            convention.getFloatingLeg().getStartDateBusinessDayAdjustment(), calibrationDateTime, dayCount, 
-            expiries.get(loopexpiry), forward, availableSmile.getFirst(), normalVolatilities.get(looptenor).getStrikeType(),
-            availableSmile.getSecond(), startParameters, fixed, shift);
+        SabrFormulaData sabrPoint = null;
+        if(data.get(looptenor).getDataType().equals(ValueType.NORMAL_VOLATILITY)) {
+        sabrPoint = calibrateShiftedFromNormalVolatilities(bda, calibrationDateTime, dayCount, 
+            expiries.get(loopexpiry), forward, availableSmile.getFirst(), data.get(looptenor).getStrikeType(),
+              availableSmile.getSecond(), startParameters, fixed, shift);
+        } else {
+          if (data.get(looptenor).getDataType().equals(ValueType.PRICE)) {
+            sabrPoint = calibrateShiftedFromPrices(bda, calibrationDateTime, dayCount,
+                expiries.get(loopexpiry), forward, availableSmile.getFirst(), data.get(looptenor).getStrikeType(),
+                availableSmile.getSecond(), startParameters, fixed, shift);
+          } else {
+            if (data.get(looptenor).getDataType().equals(ValueType.BLACK_VOLATILITY)) {
+              sabrPoint = calibrateShiftedFromBlackVolatilities(bda, calibrationDateTime, dayCount,
+                  expiries.get(loopexpiry), forward, availableSmile.getFirst(), data.get(looptenor).getStrikeType(),
+                  availableSmile.getSecond(), data.get(looptenor).getShift(), startParameters, fixed, shift);
+            } else {
+              throw new IllegalArgumentException("Data type not supported");
+            }
+          }
+        }
+        
         alphaArray = alphaArray.concat(new double[] {sabrPoint.getAlpha()});
         rhoArray = rhoArray.concat(new double[] {sabrPoint.getRho()});
         nuArray = nuArray.concat(new double[] {sabrPoint.getNu()});
@@ -142,7 +165,7 @@ public class SabrSwaptionCalibrationUtils {
     SurfaceMetadata metadata = DefaultSurfaceMetadata.builder().dayCount(dayCount)
         .surfaceName(SurfaceName.of("SABR parameter"))
         .xValueType(ValueType.YEAR_FRACTION)
-        .yValueType(normalVolatilities.get(0).getStrikeType())
+        .yValueType(data.get(0).getStrikeType())
         .zValueType(ValueType.UNKNOWN).build();
     InterpolatedNodalSurface alphaSurface = InterpolatedNodalSurface
         .of(metadata, timeToExpiryArray, timeTenorArray, alphaArray, interpolator);
@@ -222,8 +245,8 @@ public class SabrSwaptionCalibrationUtils {
       DoubleArray strikes,
       DoubleArray blackVolatilities,
       double shiftInput) {
-    if(shiftInput == shiftOutput) { // No change required if shifts are the same
-      return blackVolatilities; // FIXME: improve comparison between shifts
+    if(shiftInput == shiftOutput) { // FIXME: improve comparison between shifts
+      return blackVolatilities; // No change required if shifts are the same
     }
     int nbStrikes = strikes.size();
     double[] bv = new double[nbStrikes];
