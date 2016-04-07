@@ -9,6 +9,7 @@ import static com.opengamma.strata.basics.currency.Currency.EUR;
 import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
+import static com.opengamma.strata.basics.date.DayCounts.ACT_ACT_ISDA;
 
 import java.time.LocalDate;
 
@@ -58,12 +59,18 @@ public class RatesProviderFxDataSets {
   private static final CurveMetadata USD_DSC_METADATA = Curves.zeroRates("USD Dsc", ACT_360);
   private static final InterpolatedNodalCurve USD_DSC =
       InterpolatedNodalCurve.of(USD_DSC_METADATA, USD_DSC_TIME, USD_DSC_RATE, INTERPOLATOR);
+  private static final CurveMetadata USD_DSC_METADATA_ISDA = Curves.zeroRates("USD Dsc", ACT_ACT_ISDA);
+  private static final InterpolatedNodalCurve USD_DSC_ISDA =
+      InterpolatedNodalCurve.of(USD_DSC_METADATA_ISDA, USD_DSC_TIME, USD_DSC_RATE, INTERPOLATOR);
 
   private static final DoubleArray EUR_DSC_TIME = DoubleArray.of(0.0, 0.5, 1.0, 2.0, 5.0);
   private static final DoubleArray EUR_DSC_RATE = DoubleArray.of(0.0150, 0.0125, 0.0150, 0.0175, 0.0150);
   private static final CurveMetadata EUR_DSC_METADATA = Curves.zeroRates("EUR Dsc", ACT_360);
   private static final InterpolatedNodalCurve EUR_DSC =
       InterpolatedNodalCurve.of(EUR_DSC_METADATA, EUR_DSC_TIME, EUR_DSC_RATE, INTERPOLATOR);
+  private static final CurveMetadata EUR_DSC_METADATA_ISDA = Curves.zeroRates("EUR Dsc", ACT_ACT_ISDA);
+  private static final InterpolatedNodalCurve EUR_DSC_ISDA =
+      InterpolatedNodalCurve.of(EUR_DSC_METADATA_ISDA, EUR_DSC_TIME, EUR_DSC_RATE, INTERPOLATOR);
 
   private static final DoubleArray GBP_DSC_TIME = DoubleArray.of(0.0, 0.5, 1.0, 2.0, 5.0);
   private static final DoubleArray GBP_DSC_RATE = DoubleArray.of(0.0160, 0.0135, 0.0160, 0.0185, 0.0160);
@@ -134,8 +141,21 @@ public class RatesProviderFxDataSets {
         .build();
   }
 
-  public static String[] curveNames() {
-    return new String[] {DISCOUNTING_EUR, DISCOUNTING_USD, DISCOUNTING_GBP, DISCOUNTING_KRW};
+  /**
+   * Creates rates provider for EUR, USD with FX matrix. 
+   * <p>
+   * The discount curves are based on the day count convention, ACT/ACT ISDA.
+   * 
+   * @param valuationDate  the valuation date
+   * @return the rates provider
+   */
+  public static ImmutableRatesProvider createProviderEurUsdActActIsda(LocalDate valuationDate) {
+    FxMatrix fxMatrix = FxMatrix.builder().addRate(USD, EUR, 1.0d / EUR_USD).build();
+    return ImmutableRatesProvider.builder(valuationDate)
+        .discountCurve(EUR, EUR_DSC_ISDA)
+        .discountCurve(USD, USD_DSC_ISDA)
+        .fxRateProvider(fxMatrix)
+        .build();
   }
 
   public static FxMatrix fxMatrix() {
