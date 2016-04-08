@@ -8,6 +8,7 @@ package com.opengamma.strata.pricer.swaption;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
@@ -26,6 +27,8 @@ import com.opengamma.strata.market.surface.InterpolatedNodalSurface;
 import com.opengamma.strata.market.surface.NodalSurface;
 import com.opengamma.strata.market.surface.SurfaceMetadata;
 import com.opengamma.strata.market.surface.SurfaceName;
+import com.opengamma.strata.market.surface.SurfaceParameterMetadata;
+import com.opengamma.strata.market.surface.meta.SwaptionSurfaceExpiryTenorNodeMetadata;
 import com.opengamma.strata.math.impl.interpolation.GridInterpolator2D;
 import com.opengamma.strata.math.impl.statistics.leastsquare.LeastSquareResultsWithTransform;
 import com.opengamma.strata.pricer.impl.option.BlackFormulaRepository;
@@ -111,6 +114,7 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray alphaArray = DoubleArray.EMPTY;
     DoubleArray rhoArray = DoubleArray.EMPTY;
     DoubleArray nuArray = DoubleArray.EMPTY;
+    List<SurfaceParameterMetadata> parameterMetadata = new ArrayList<>();
     for (int looptenor = 0; looptenor < nbTenors; looptenor++) {
       double timeTenor = tenors.get(looptenor).getPeriod().getYears() 
           + tenors.get(looptenor).getPeriod().getMonths() / 12;
@@ -160,19 +164,34 @@ public class SabrSwaptionCalibrationUtils {
         alphaArray = alphaArray.concat(new double[] {sabrPoint.getAlpha()});
         rhoArray = rhoArray.concat(new double[] {sabrPoint.getRho()});
         nuArray = nuArray.concat(new double[] {sabrPoint.getNu()});
+        parameterMetadata.add(SwaptionSurfaceExpiryTenorNodeMetadata.of(timeToExpiry, timeTenor, 
+            expiries.get(loopexpiry).toString() + "x" + tenors.get(looptenor).toString()));
       }
     }
-    SurfaceMetadata metadata = DefaultSurfaceMetadata.builder().dayCount(dayCount)
-        .surfaceName(SurfaceName.of("SABR parameter"))
+    SurfaceMetadata metadataAlpha = DefaultSurfaceMetadata.builder().dayCount(dayCount)
+        .surfaceName(SurfaceName.of("SABR-Alpha"))
         .xValueType(ValueType.YEAR_FRACTION)
-        .yValueType(data.get(0).getStrikeType())
-        .zValueType(ValueType.UNKNOWN).build();
+        .yValueType(ValueType.YEAR_FRACTION)
+        .zValueType(ValueType.UNKNOWN)
+        .parameterMetadata(parameterMetadata).build();
+    SurfaceMetadata metadataRho = DefaultSurfaceMetadata.builder().dayCount(dayCount)
+        .surfaceName(SurfaceName.of("SABR-Rho"))
+        .xValueType(ValueType.YEAR_FRACTION)
+        .yValueType(ValueType.YEAR_FRACTION)
+        .zValueType(ValueType.UNKNOWN)
+        .parameterMetadata(parameterMetadata).build();
+    SurfaceMetadata metadataNu = DefaultSurfaceMetadata.builder().dayCount(dayCount)
+        .surfaceName(SurfaceName.of("SABR-Nu"))
+        .xValueType(ValueType.YEAR_FRACTION)
+        .yValueType(ValueType.YEAR_FRACTION)
+        .zValueType(ValueType.UNKNOWN)
+        .parameterMetadata(parameterMetadata).build();
     InterpolatedNodalSurface alphaSurface = InterpolatedNodalSurface
-        .of(metadata, timeToExpiryArray, timeTenorArray, alphaArray, interpolator);
+        .of(metadataAlpha, timeToExpiryArray, timeTenorArray, alphaArray, interpolator);
     InterpolatedNodalSurface rhoSurface = InterpolatedNodalSurface
-        .of(metadata, timeToExpiryArray, timeTenorArray, rhoArray, interpolator);
+        .of(metadataRho, timeToExpiryArray, timeTenorArray, rhoArray, interpolator);
     InterpolatedNodalSurface nuSurface = InterpolatedNodalSurface
-        .of(metadata, timeToExpiryArray, timeTenorArray, nuArray, interpolator);
+        .of(metadataNu, timeToExpiryArray, timeTenorArray, nuArray, interpolator);
     return SabrParametersSwaptionVolatilities.of(
         SabrInterestRateParameters.of(alphaSurface, betaSurface, rhoSurface, nuSurface, sabrFunctionProvider, shiftSurface), 
         convention, calibrationDateTime, dayCount);
