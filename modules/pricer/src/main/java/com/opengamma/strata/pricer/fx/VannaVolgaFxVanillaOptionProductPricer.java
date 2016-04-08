@@ -5,9 +5,7 @@ import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.basics.currency.FxRate;
 import com.opengamma.strata.collect.ArgChecker;
-import com.opengamma.strata.collect.array.DoubleMatrix;
-import com.opengamma.strata.math.impl.linearalgebra.DecompositionResult;
-import com.opengamma.strata.math.impl.linearalgebra.SVDecompositionCommons;
+import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.pricer.impl.option.BlackFormulaRepository;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.product.fx.ResolvedFxSingle;
@@ -40,38 +38,26 @@ public class VannaVolgaFxVanillaOptionProductPricer {
 
     ResolvedFxSingle underlyingFx = option.getUnderlying();
     Currency ccyCounter = option.getCounterCurrency();
-    double dfCounter = ratesProvider.discountFactor(ccyCounter, underlyingFx.getPaymentDate());//0.9804933982869053 // OK
+    double df = ratesProvider.discountFactor(ccyCounter, underlyingFx.getPaymentDate());
     ResolvedFxSingle underlying = option.getUnderlying();
     FxRate forward = fxPricer.forwardFxRate(underlying, ratesProvider);
     CurrencyPair currencyPair = underlyingFx.getCurrencyPair();
-    double forwardRate = forward.fxRate(currencyPair); // 1.3931221717772266 OK
-    //    double forwardRate = 1.14154;
+    double forwardRate = forward.fxRate(currencyPair);
     double strikeRate = option.getStrike();
-    double timeToExpiry = volatilityProvider.relativeTime(option.getExpiry()); // 1.5015120892282356
+    double timeToExpiry = volatilityProvider.relativeTime(option.getExpiry());
     boolean isCall = option.getPutCall().isCall();
     SmileDeltaParameters smileAtTime = volatilityProvider.getSmile().smileForTime(timeToExpiry);
-
-    // [1.2798195118783868, 1.4091288965805677, 1.5891318872855842]
-    // [0.11455707236797896, 0.12335752812299337, 0.14117242640024633]
-    double[] strikesVV = smileAtTime.getStrike(forwardRate).toArray(); // TODO size should be 3
-    double[] volVV = smileAtTime.getVolatility().toArray(); // TODO size should be 3
-    double volATM = volVV[1];
-    double[] priceVVATM = new double[3]; // [0.1465755439391062, 0.0, 0.023313680399083197]
-    double[] priceVVsmile = new double[3]; // [0.1418341141572143, 0.0, 0.032408235108741155]
-
-    for (int loopvv = 0; loopvv < 3; loopvv = loopvv + 2) {
-      priceVVATM[loopvv] = dfCounter *
-          BlackFormulaRepository.price(forwardRate, strikesVV[loopvv], timeToExpiry, volATM, isCall);
-      priceVVsmile[loopvv] = dfCounter *
-          BlackFormulaRepository.price(forwardRate, strikesVV[loopvv], timeToExpiry, volVV[loopvv], isCall);
+    double[] strikes = smileAtTime.getStrike(forwardRate).toArray(); // TODO size should be 3
+    double[] vols = smileAtTime.getVolatility().toArray(); // TODO size should be 3
+    double volAtm = vols[1];
+    double[] x = vannaVolgaWeights(forwardRate, strikeRate, timeToExpiry, volAtm, strikes);
+    double priceFwd = BlackFormulaRepository.price(forwardRate, strikeRate, timeToExpiry, volAtm, isCall);
+    for (int i = 0; i < 3; i = i + 2) {
+      double priceFwdAtm = BlackFormulaRepository.price(forwardRate, strikes[i], timeToExpiry, volAtm, isCall);
+      double priceFwdSmile = BlackFormulaRepository.price(forwardRate, strikes[i], timeToExpiry, vols[i], isCall);
+      priceFwd += x[i] * (priceFwdSmile - priceFwdAtm);
     }
-    double[] x = vannaVolgaWeights(forwardRate, strikeRate, timeToExpiry, volATM, dfCounter, strikesVV);
-    double price = BlackFormulaRepository.price(forwardRate, strikeRate, timeToExpiry, volATM, isCall) * dfCounter;
-    //    System.out.println("black: " + price);
-    for (int loopvv = 0; loopvv < 3; loopvv = loopvv + 2) {
-      price += x[loopvv] * (priceVVsmile[loopvv] - priceVVATM[loopvv]);
-    }
-    return price;
+    return df * priceFwd;
   }
 
   public CurrencyAmount presentValue(
@@ -84,51 +70,57 @@ public class VannaVolgaFxVanillaOptionProductPricer {
   }
 
   //-------------------------------------------------------------------------
+  public PointSensitivityBuilder presentValueSensitivity(
+      ResolvedFxVanillaOption option,
+      RatesProvider ratesProvider,
+      BlackVolatilitySmileFxProvider volatilityProvider) {
+
+    ResolvedFxSingle underlyingFx = option.getUnderlying();
+    Currency ccyCounter = option.getCounterCurrency();
+    double df = ratesProvider.discountFactor(ccyCounter, underlyingFx.getPaymentDate());
+    ResolvedFxSingle underlying = option.getUnderlying();
+    FxRate forward = fxPricer.forwardFxRate(underlying, ratesProvider);
+    CurrencyPair currencyPair = underlyingFx.getCurrencyPair();
+    double forwardRate = forward.fxRate(currencyPair);
+    double strikeRate = option.getStrike();
+    double timeToExpiry = volatilityProvider.relativeTime(option.getExpiry());
+    boolean isCall = option.getPutCall().isCall();
+    SmileDeltaParameters smileAtTime = volatilityProvider.getSmile().smileForTime(timeToExpiry);
+    double[] strikes = smileAtTime.getStrike(forwardRate).toArray(); // TODO size should be 3
+    double[] vols = smileAtTime.getVolatility().toArray(); // TODO size should be 3
+    double volAtm = vols[1];
+    double[] x = vannaVolgaWeights(forwardRate, strikeRate, timeToExpiry, volAtm, strikes);
+    double priceFwd = BlackFormulaRepository.price(forwardRate, strikeRate, timeToExpiry, volAtm, isCall);
+    double deltaFwd = BlackFormulaRepository.delta(forwardRate, strikeRate, timeToExpiry, volAtm, isCall);
+    for (int i = 0; i < 3; i = i + 2) {
+      double priceFwdAtm = BlackFormulaRepository.price(forwardRate, strikes[i], timeToExpiry, volAtm, isCall);
+      double priceFwdSmile = BlackFormulaRepository.price(forwardRate, strikes[i], timeToExpiry, vols[i], isCall);
+      priceFwd += x[i] * (priceFwdSmile - priceFwdAtm);
+      double deltaFwdAtm = BlackFormulaRepository.delta(forwardRate, strikes[i], timeToExpiry, volAtm, isCall);
+      double deltaFwdSmile = BlackFormulaRepository.delta(forwardRate, strikes[i], timeToExpiry, vols[i], isCall);
+      deltaFwd += x[i] * (deltaFwdSmile - deltaFwdAtm);
+    }
+    double signedNotional = signedNotional(option);
+    PointSensitivityBuilder dfSensi = ratesProvider.discountFactors(ccyCounter)
+        .zeroRatePointSensitivity(underlyingFx.getPaymentDate()).multipliedBy(priceFwd * signedNotional);
+    PointSensitivityBuilder fwdSensi = fxPricer.forwardFxRatePointSensitivity(
+        option.getPutCall().isCall() ? underlying : underlying.inverse(), ratesProvider)
+        .multipliedBy(df * deltaFwd * signedNotional);
+    return dfSensi.combinedWith(fwdSensi);
+  }
+
+  //-------------------------------------------------------------------------
   // signed notional amount to computed present value and value Greeks
   private double signedNotional(ResolvedFxVanillaOption option) {
     return (option.getLongShort().isLong() ? 1d : -1d) *
         Math.abs(option.getUnderlying().getBaseCurrencyPayment().getAmount());
   }
 
-  /**
-   * Matrix decomposition. 
-   */
-  private static final SVDecompositionCommons SVD = new SVDecompositionCommons();
-
-  public double[] vannaVolgaWeights(
-      double forward,
-      double strike,
-      double timeToExpiry,
-      boolean isCall,
-      double dfDomestic,
-      double[] strikesReference,
-      double[] volatilitiesReference) {
-
-    double[][] matrix = new double[3][3];
-    double[] vec = new double[3];
-    double volATM = volatilitiesReference[1];
-    for (int loopvv = 0; loopvv < 3; loopvv = loopvv + 2) {
-      matrix[loopvv][0] = dfDomestic *
-          BlackFormulaRepository.vega(forward, strikesReference[loopvv], timeToExpiry, volatilitiesReference[loopvv]);
-      matrix[loopvv][1] = dfDomestic *
-          BlackFormulaRepository.vanna(forward, strikesReference[loopvv], timeToExpiry, volatilitiesReference[loopvv]);
-      matrix[loopvv][2] = dfDomestic *
-          BlackFormulaRepository.volga(forward, strikesReference[loopvv], timeToExpiry, volatilitiesReference[loopvv]);
-    }
-    vec[0] = dfDomestic * BlackFormulaRepository.vega(forward, strike, timeToExpiry, volATM);
-    vec[1] = dfDomestic * BlackFormulaRepository.vanna(forward, strike, timeToExpiry, volATM);
-    vec[2] = dfDomestic * BlackFormulaRepository.volga(forward, strike, timeToExpiry, volATM);
-    DecompositionResult decmp = SVD.apply(DoubleMatrix.ofUnsafe(matrix));
-    return decmp.solve(vec);
-
-  }
-
-  public double[] vannaVolgaWeights(
+  private double[] vannaVolgaWeights(
       double forward,
       double strike,
       double timeToExpiry,
       double volATM,
-      double dfDomestic,
       double[] strikesReference
       ) {
 
