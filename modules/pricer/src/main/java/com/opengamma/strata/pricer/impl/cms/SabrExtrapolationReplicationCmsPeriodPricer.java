@@ -81,8 +81,8 @@ public class SabrExtrapolationReplicationCmsPeriodPricer {
    * The maximum iteration count.
    */
   private static final int MAX_COUNT = 10;
-  /** Shift from zero bound for floor. To avoid numerical instability of the SABR function around 0. Shift by 1 bps. */
-  private static final double ZERO_SHIFT =  1.0E-4;
+  /** Shift from zero bound for floor. To avoid numerical instability of the SABR function around 0. Shift by 0.01 bps. */
+  private static final double ZERO_SHIFT =  1.0E-6;
 
   /**
    * Pricer for the underlying swap. 
