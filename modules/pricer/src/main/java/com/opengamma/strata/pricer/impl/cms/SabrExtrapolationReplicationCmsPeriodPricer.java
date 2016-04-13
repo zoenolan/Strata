@@ -467,8 +467,11 @@ public class SabrExtrapolationReplicationCmsPeriodPricer {
 
     double res;
     double vol = swaptionVolatilities.volatility(expiryTime, tenor, forward, forward);
-    double upper = Math.max(forward * Math.exp(6d * vol * Math.sqrt(expiryTime)),
-        Math.max(cutOffStrike, 2.0d * strike)); // To ensure that the integral covers a good part of the smile
+    double upper = 
+        Math.min(
+            Math.max(forward * Math.exp(6d * vol * Math.sqrt(expiryTime)),
+        Math.max(cutOffStrike, 2.0d * strike)),// To ensure that the integral covers a good part of the smile
+        1.00); // To ensure that we don't miss the meaningful part
     res = integrator.integrate(integrant, strike, upper);
     double reminder = integrant.apply(upper) * upper;
     double error = reminder / res;
