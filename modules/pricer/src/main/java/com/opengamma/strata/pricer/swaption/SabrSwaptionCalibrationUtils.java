@@ -138,7 +138,7 @@ public class SabrSwaptionCalibrationUtils {
         timeToExpiryArray = timeToExpiryArray.concat(new double[] {timeToExpiry });
         timeTenorArray = timeTenorArray.concat(new double[] {timeTenor });
         double alphaStart = 0.0025 / Math.pow(forward + shift, beta); // To improve ?
-        DoubleArray startParameters = DoubleArray.ofUnsafe(new double[] {alphaStart, beta, 0.0, 0.10 }); 
+        DoubleArray startParameters = DoubleArray.ofUnsafe(new double[] {alphaStart, beta, -0.50, 0.30 }); 
         // TODO: To improve start parameters
         SabrFormulaData sabrPoint = null;
         if(data.get(looptenor).getDataType().equals(ValueType.NORMAL_VOLATILITY)) {
