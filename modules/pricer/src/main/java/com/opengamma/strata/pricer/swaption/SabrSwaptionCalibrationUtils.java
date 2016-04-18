@@ -137,29 +137,9 @@ public class SabrSwaptionCalibrationUtils {
         double forward = swapPricer.parRate(swap0.getProduct().resolve(REF_DATA), ratesProvider);
         timeToExpiryArray = timeToExpiryArray.concat(new double[] {timeToExpiry });
         timeTenorArray = timeTenorArray.concat(new double[] {timeTenor });
-        double alphaStart = 0.0025 / Math.pow(forward + shift, beta); // To improve ?
-        DoubleArray startParameters = DoubleArray.ofUnsafe(new double[] {alphaStart, beta, -0.50, 0.30 }); 
-        // TODO: To improve start parameters
-        SabrFormulaData sabrPoint = null;
-        if(data.get(looptenor).getDataType().equals(ValueType.NORMAL_VOLATILITY)) {
-        sabrPoint = calibrateShiftedFromNormalVolatilities(bda, calibrationDateTime, dayCount, 
-            expiries.get(loopexpiry), forward, availableSmile.getFirst(), data.get(looptenor).getStrikeType(),
-              availableSmile.getSecond(), startParameters, fixed, shift);
-        } else {
-          if (data.get(looptenor).getDataType().equals(ValueType.PRICE)) {
-            sabrPoint = calibrateShiftedFromPrices(bda, calibrationDateTime, dayCount,
-                expiries.get(loopexpiry), forward, availableSmile.getFirst(), data.get(looptenor).getStrikeType(),
-                availableSmile.getSecond(), startParameters, fixed, shift);
-          } else {
-            if (data.get(looptenor).getDataType().equals(ValueType.BLACK_VOLATILITY)) {
-              sabrPoint = calibrateShiftedFromBlackVolatilities(bda, calibrationDateTime, dayCount,
-                  expiries.get(loopexpiry), forward, availableSmile.getFirst(), data.get(looptenor).getStrikeType(),
-                  availableSmile.getSecond(), data.get(looptenor).getShift(), startParameters, fixed, shift);
-            } else {
-              throw new IllegalArgumentException("Data type not supported");
-            }
-          }
-        }
+        
+        SabrFormulaData sabrPoint = calibration(forward, shift, beta, fixed, bda, calibrationDateTime, dayCount, 
+            availableSmile.getFirst(), availableSmile.getSecond(), expiries.get(loopexpiry), data.get(looptenor));
         
         alphaArray = alphaArray.concat(new double[] {sabrPoint.getAlpha()});
         rhoArray = rhoArray.concat(new double[] {sabrPoint.getRho()});
@@ -197,6 +177,55 @@ public class SabrSwaptionCalibrationUtils {
         convention, calibrationDateTime, dayCount);
   }
 
+  private SabrFormulaData calibration(double forward, double shift, double beta, BitSet fixed,
+      BusinessDayAdjustment bda, ZonedDateTime calibrationDateTime, DayCount dayCount,
+      DoubleArray strike, DoubleArray data, Period expiry, RawOptionData rawData) {
+    double rhoStart = -0.50 * beta + 0.50 * (1-beta); 
+    // Correlation is usually positive for normal and negative for log-normal;.
+    double[] alphaStart = new double[4];
+    alphaStart[0] = 0.0025 / Math.pow(forward + shift, beta); // Low vol
+    alphaStart[1] = alphaStart[0];
+    alphaStart[2] = 4 * alphaStart[0]; // High vol
+    alphaStart[3] = alphaStart[2];
+    double[] nuStart = new double[4];
+    nuStart[0] = 0.10; // Low vol of vol
+    nuStart[1] = 0.50; // High vol of vol
+    nuStart[2] = 0.10;
+    nuStart[3] = 0.50;
+    double chi2 = 1.0E+12; // Large number 
+    SabrFormulaData sabrPoint = null;
+    for (int i = 0; i < 4; i++) { // Try different starting points and take the best
+      DoubleArray startParameters = DoubleArray.ofUnsafe(new double[] {alphaStart[i], beta, rhoStart, nuStart[i] });
+      LeastSquareResultsWithTransform r = null;
+      if (rawData.getDataType().equals(ValueType.NORMAL_VOLATILITY)) {
+        r = calibrateShiftedFromNormalVolatilities(bda, calibrationDateTime, dayCount,
+            expiry, forward, strike, rawData.getStrikeType(),
+            data, startParameters, fixed, shift);
+      } else {
+        if (rawData.getDataType().equals(ValueType.PRICE)) {
+          r = calibrateShiftedFromPrices(bda, calibrationDateTime, dayCount,
+              expiry, forward, strike, rawData.getStrikeType(),
+              data, startParameters, fixed, shift);
+        } else {
+          if (rawData.getDataType().equals(ValueType.BLACK_VOLATILITY)) {
+            r = calibrateShiftedFromBlackVolatilities(bda, calibrationDateTime, dayCount,
+                expiry, forward, strike, rawData.getStrikeType(),
+                data, rawData.getShift(), startParameters, fixed, shift);
+          } else {
+            throw new IllegalArgumentException("Data type not supported");
+          }
+        }
+      }
+      if(r.getChiSq() < chi2) { // Better calibration
+        sabrPoint = SabrFormulaData.of(r.getModelParameters().toArrayUnsafe());
+        chi2 = r.getChiSq();
+      }
+//      System.out.println(expiry.toString() + " -> " + i + ", " + r.getChiSq()); // TODO: remove after testing
+    }
+//    System.out.println(expiry.toString() + " -> Final" + ", " + chi2); // TODO: remove after testing
+    return sabrPoint;
+  }
+
   /**
    * Calibrate the SABR parameters to a set of Black volatilities at given moneyness. All the associated swaptions
    * have the same expiration date, given by a period from calibration time, and the same tenor.
@@ -216,7 +245,7 @@ public class SabrSwaptionCalibrationUtils {
    * @param shiftOutput  the shift to calibrate the shifted SABR
    * @return SABR parameters
    */
-  public SabrFormulaData calibrateShiftedFromBlackVolatilities(
+  public LeastSquareResultsWithTransform calibrateShiftedFromBlackVolatilities(
       BusinessDayAdjustment bda,
       ZonedDateTime calibrationDateTime,
       DayCount dayCount,
@@ -242,8 +271,7 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray strikesShifted = strikesShifted(forward, shiftOutput, strikesLike, strikeType);
     SabrModelFitter fitter = new SabrModelFitter(forward + shiftOutput, strikesShifted, timeToExpiry,
         blackVolatilitiesTransformed, DoubleArray.ofUnsafe(errors), sabrFunctionProvider);
-    LeastSquareResultsWithTransform r = fitter.solve(startParameters, fixedParameters);
-    return SabrFormulaData.of(r.getModelParameters().toArrayUnsafe());
+    return fitter.solve(startParameters, fixedParameters);
   }
   
   /**
@@ -296,7 +324,7 @@ public class SabrSwaptionCalibrationUtils {
    * @param shiftOutput  the shift to calibrate the shifted SABR
    * @return SABR parameters
    */
-  public SabrFormulaData calibrateShiftedFromPrices(
+  public LeastSquareResultsWithTransform calibrateShiftedFromPrices(
       BusinessDayAdjustment bda,
       ZonedDateTime calibrationDateTime,
       DayCount dayCount,
@@ -321,8 +349,7 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray strikesShifted = strikesShifted(forward, shiftOutput, strikesLike, strikeType);
     SabrModelFitter fitter = new SabrModelFitter(forward + shiftOutput, strikesShifted, timeToExpiry,
         blackVolatilitiesTransformed, DoubleArray.ofUnsafe(errors), sabrFunctionProvider);
-    LeastSquareResultsWithTransform r = fitter.solve(startParameters, fixedParameters);
-    return SabrFormulaData.of(r.getModelParameters().toArrayUnsafe());
+    return fitter.solve(startParameters, fixedParameters);
   }
   
   /**
@@ -368,7 +395,7 @@ public class SabrSwaptionCalibrationUtils {
    * @param shiftOutput  the shift to calibrate the shifted SABR
    * @return SABR parameters
    */
-  public SabrFormulaData calibrateShiftedFromNormalVolatilities(
+  public LeastSquareResultsWithTransform calibrateShiftedFromNormalVolatilities(
       BusinessDayAdjustment bda,
       ZonedDateTime calibrationDateTime,
       DayCount dayCount,
@@ -393,8 +420,7 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray strikesShifted = strikesShifted(forward, shiftOutput, strikesLike, strikeType);
     SabrModelFitter fitter = new SabrModelFitter(forward + shiftOutput, strikesShifted, timeToExpiry,
         blackVolatilitiesTransformed, DoubleArray.ofUnsafe(errors), sabrFunctionProvider);
-    LeastSquareResultsWithTransform r = fitter.solve(startParameters, fixedParameters);
-    return SabrFormulaData.of(r.getModelParameters().toArrayUnsafe());
+    return fitter.solve(startParameters, fixedParameters);
   }
 
   
