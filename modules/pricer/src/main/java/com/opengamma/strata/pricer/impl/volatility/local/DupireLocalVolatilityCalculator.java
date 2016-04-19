@@ -1,3 +1,8 @@
+/**
+ * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
+ * 
+ * Please see distribution for license.
+ */
 package com.opengamma.strata.pricer.impl.volatility.local;
 
 import java.util.function.Function;
@@ -12,6 +17,11 @@ import com.opengamma.strata.math.impl.differentiation.ScalarSecondOrderDifferent
 import com.opengamma.strata.math.impl.differentiation.VectorFieldFirstOrderDifferentiator;
 import com.opengamma.strata.math.impl.differentiation.VectorFieldSecondOrderDifferentiator;
 
+/**
+ * Local volatility computation based on the exact formula. 
+ * <p>
+ * Bruno Dupire, "Pricing with a Smile", Risk (1994).
+ */
 public class DupireLocalVolatilityCalculator implements LocalVolatilityCalculator {
 
   private static final double SMALL = 1.0e-10;
@@ -21,52 +31,7 @@ public class DupireLocalVolatilityCalculator implements LocalVolatilityCalculato
   private static final VectorFieldSecondOrderDifferentiator SECOND_DERIV_SENSI = new VectorFieldSecondOrderDifferentiator();
 
   @Override
-  public DeformedSurface getLocalVolatilityFromPrice(
-      Surface priceSurface,
-      double spot,
-      Function<Double, Double> interestRate,
-      Function<Double, Double> dividendRate) {
-    
-    Function<DoublesPair, ValueDerivatives> func = new Function<DoublesPair, ValueDerivatives>() {
-      @Override
-      public ValueDerivatives apply(DoublesPair x) {
-        double t = x.getFirst();
-        double k = x.getSecond();
-        double r = interestRate.apply(t);
-        double q = dividendRate.apply(t);
-        double price = priceSurface.zValue(t, k);
-        DoubleArray priceSensi = priceSurface.zValueParameterSensitivity(t, k).getSensitivity();
-        double divT = FIRST_DERIV.differentiate(u -> priceSurface.zValue(u, k)).apply(t);
-        DoubleArray divTSensi = FIRST_DERIV_SENSI.differentiate(
-            u -> priceSurface.zValueParameterSensitivity(u.get(0), k).getSensitivity())
-            .apply(DoubleArray.of(t)).column(0);
-        double divK = FIRST_DERIV.differentiate(l -> priceSurface.zValue(t, l)).apply(k);
-        DoubleArray divKSensi = FIRST_DERIV_SENSI.differentiate(
-            l -> priceSurface.zValueParameterSensitivity(t, l.get(0)).getSensitivity())
-            .apply(DoubleArray.of(k)).column(0);
-        double divK2 = SECOND_DERIV.differentiate(l -> priceSurface.zValue(t, l)).apply(k);
-        DoubleArray divK2Sensi =  SECOND_DERIV_SENSI.differentiateNoCross(
-            l -> priceSurface.zValueParameterSensitivity(t, l.get(0)).getSensitivity())
-            .apply(DoubleArray.of(k)).column(0);
-        double var = 2d * (divT + q * price + (r - q) * k * divK) / (k * k * divK2);
-        if (var < 0d) {
-          throw new IllegalArgumentException("Negative variance");
-        }
-        double localVol = Math.sqrt(var);
-        double factor = 1d / (localVol * k * k * divK2);
-        DoubleArray localVolSensi = divTSensi.multipliedBy(factor)
-            .plus(divKSensi.multipliedBy((r - q) * k * factor))
-            .plus(priceSensi.multipliedBy(q * factor))
-            .plus(divK2Sensi.multipliedBy(localVol * 0.25 / divK2));
-        return ValueDerivatives.of(localVol, localVolSensi);
-      }
-    };
-
-    return DeformedSurface.of(priceSurface, func);
-  }
-
-  @Override
-  public DeformedSurface getLocalVolatilityFromImpliedVolatility(
+  public DeformedSurface localVolatilityFromImpliedVolatility(
       Surface impliedVolatilitySurface,  
       double spot,
       Function<Double, Double> interestRate,
@@ -109,18 +74,61 @@ public class DupireLocalVolatilityCalculator implements LocalVolatilityCalculato
             throw new IllegalArgumentException("Negative variance");
           }
           localVol = Math.sqrt(var);
-          localVolSensi =
-              volSensi.multipliedBy(((vol + t * (divT + rq * k * divK)) / localVol + 0.5 * localVol * k *
-                  (2d * h2 / vol + k * divK * divK / vol * (h1 * h1 + h2 * h2) - k * t * divK2)) / den)
-                  .plus(divKSensi.multipliedBy((vol * t * rq * k / localVol
-                      - localVol * k * h1 * (1d + k * h2 * divK)) / den))
-                  .plus(divTSensi.multipliedBy(vol * t / (localVol * den)))
-                  .plus(divK2Sensi.multipliedBy(-0.5 * vol * localVol * k * k * t / den));
+          localVolSensi = volSensi.multipliedBy(localVol * k * h2 * divK * (1d + 0.5 * k * h2 * divK) / vol / den
+                  + 0.5 * localVol * Math.pow(k * h1 * divK, 2) / vol / den
+                  + (vol + divT * t + rq * t * k * divK) / (localVol * den) - 0.5 * divK2 * localVol * k * k * t / den)
+              .plus(divKSensi.multipliedBy((vol * t * rq * k / localVol - localVol * k * h1 * (1d + k * h2 * divK)) / den))
+              .plus(divTSensi.multipliedBy(vol * t / (localVol * den)))
+              .plus(divK2Sensi.multipliedBy(-0.5 * vol * localVol * k * k * t / den));
         }
         return ValueDerivatives.of(localVol, localVolSensi);
       }
     };
-
     return DeformedSurface.of(impliedVolatilitySurface, func);
   }
+
+  @Override
+  public DeformedSurface localVolatilityFromPrice(
+      Surface callPrcieSurface,
+      double spot,
+      Function<Double, Double> interestRate,
+      Function<Double, Double> dividendRate) {
+
+    Function<DoublesPair, ValueDerivatives> func = new Function<DoublesPair, ValueDerivatives>() {
+      @Override
+      public ValueDerivatives apply(DoublesPair x) {
+        double t = x.getFirst();
+        double k = x.getSecond();
+        double r = interestRate.apply(t);
+        double q = dividendRate.apply(t);
+        double price = callPrcieSurface.zValue(t, k);
+        DoubleArray priceSensi = callPrcieSurface.zValueParameterSensitivity(t, k).getSensitivity();
+        double divT = FIRST_DERIV.differentiate(u -> callPrcieSurface.zValue(u, k)).apply(t);
+        DoubleArray divTSensi = FIRST_DERIV_SENSI.differentiate(
+            u -> callPrcieSurface.zValueParameterSensitivity(u.get(0), k).getSensitivity())
+            .apply(DoubleArray.of(t)).column(0);
+        double divK = FIRST_DERIV.differentiate(l -> callPrcieSurface.zValue(t, l)).apply(k);
+        DoubleArray divKSensi = FIRST_DERIV_SENSI.differentiate(
+            l -> callPrcieSurface.zValueParameterSensitivity(t, l.get(0)).getSensitivity())
+            .apply(DoubleArray.of(k)).column(0);
+        double divK2 = SECOND_DERIV.differentiate(l -> callPrcieSurface.zValue(t, l)).apply(k);
+        DoubleArray divK2Sensi = SECOND_DERIV_SENSI.differentiateNoCross(
+            l -> callPrcieSurface.zValueParameterSensitivity(t, l.get(0)).getSensitivity())
+            .apply(DoubleArray.of(k)).column(0);
+        double var = 2d * (divT + q * price + (r - q) * k * divK) / (k * k * divK2);
+        if (var < 0d) {
+          throw new IllegalArgumentException("Negative variance");
+        }
+        double localVol = Math.sqrt(var);
+        double factor = 1d / (localVol * k * k * divK2);
+        DoubleArray localVolSensi = divTSensi.multipliedBy(factor)
+            .plus(divKSensi.multipliedBy((r - q) * k * factor))
+            .plus(priceSensi.multipliedBy(q * factor))
+            .plus(divK2Sensi.multipliedBy(-0.5 * localVol / divK2));
+        return ValueDerivatives.of(localVol, localVolSensi);
+      }
+    };
+    return DeformedSurface.of(callPrcieSurface, func);
+  }
+
 }
