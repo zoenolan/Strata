@@ -17,7 +17,6 @@ import com.opengamma.strata.market.surface.DefaultSurfaceMetadata;
 import com.opengamma.strata.market.surface.DeformedSurface;
 import com.opengamma.strata.market.surface.InterpolatedNodalSurface;
 import com.opengamma.strata.market.surface.NodalSurface;
-import com.opengamma.strata.market.surface.Surface;
 import com.opengamma.strata.market.surface.SurfaceUnitParameterSensitivity;
 import com.opengamma.strata.math.impl.interpolation.CombinedInterpolatorExtrapolator;
 import com.opengamma.strata.math.impl.interpolation.GridInterpolator2D;
@@ -211,39 +210,4 @@ public class DupireLocalVolatilityCalculatorTest {
     return Math.sqrt(var);
   }
 
-  //-----------------------------------------------------------------------
-  private void print1(Surface localVolSurface, double spot) {
-    int nStrikes = 80;
-    double[] strikes = new double[nStrikes];
-    for (int i = 0; i < nStrikes; ++i) {
-      strikes[i] = spot * (0.5 + 0.02 * i);
-      System.out.print("\t" + strikes[i]);
-    }
-    System.out.print("\n");
-    double time = 1.1d;
-    System.out.print(time);
-    for (int i = 0; i < nStrikes; ++i) {
-      System.out.print("\t" + localVolSurface.zValue(time, strikes[i]));
-    }
-    System.out.print("\n");
-  }
-
-  private void print(Surface localVolSurface, double spot) {
-    int nStrikes = 50;
-    int nTimes = 50;
-    double[] strikes = new double[nStrikes];
-    for (int i = 0; i < nStrikes; ++i) {
-      strikes[i] = spot * (0.5 + 0.02 * i);
-      System.out.print("\t" + strikes[i]);
-    }
-    System.out.print("\n");
-    for (int j = 0; j < nTimes; ++j) {
-      double time = 0.02 + 0.02 * j;
-      System.out.print(time);
-      for (int i = 0; i < nStrikes; ++i) {
-        System.out.print("\t" + localVolSurface.zValue(time, strikes[i]));
-      }
-      System.out.print("\n");
-    }
-  }
 }

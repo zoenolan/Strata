@@ -21,7 +21,6 @@ import com.opengamma.strata.market.surface.ConstantNodalSurface;
 import com.opengamma.strata.market.surface.DefaultSurfaceMetadata;
 import com.opengamma.strata.market.surface.DeformedSurface;
 import com.opengamma.strata.market.surface.InterpolatedNodalSurface;
-import com.opengamma.strata.market.surface.Surface;
 import com.opengamma.strata.math.impl.interpolation.CombinedInterpolatorExtrapolator;
 import com.opengamma.strata.math.impl.interpolation.GridInterpolator2D;
 import com.opengamma.strata.math.impl.interpolation.Interpolator1D;
@@ -169,46 +168,4 @@ public class ImpliedTrinomialTreeLocalVolatilityCalculatorTest {
     }
   }
 
-  //-----------------------------------------------------------------------
-  private void print(Surface localVolSurface, double spot) {
-    int nStrikes = 50;
-    int nTimes = 50;
-    double[] strikes = new double[nStrikes];
-    for (int i = 0; i < nStrikes; ++i) {
-      strikes[i] = spot * (0.5 + 0.02 * i);
-      System.out.print("\t" + strikes[i]);
-    }
-    System.out.print("\n");
-    for (int j = 0; j < nTimes; ++j) {
-      double time = 0.02 + 0.02 * j;
-      System.out.print(time);
-      for (int i = 0; i < nStrikes; ++i) {
-        System.out.print("\t" + localVolSurface.zValue(time, strikes[i]));
-      }
-      System.out.print("\n");
-    }
-  }
-
-  private void print1(Surface localVolSurface, double spot, double time) {
-    int nStrikes = 80;
-    double[] strikes = new double[nStrikes];
-    for (int i = 0; i < nStrikes; ++i) {
-      strikes[i] = spot * (0.5 + 0.02 * i);
-      System.out.print("\t" + strikes[i]);
-    }
-    System.out.print("\n");
-    System.out.print(time);
-    for (int i = 0; i < nStrikes; ++i) {
-      System.out.print("\t" + localVolSurface.zValue(time, strikes[i]));
-    }
-    System.out.print("\n");
-  }
-
-  private void printPoints(InterpolatedNodalSurface localVolSurface) {
-    int n = localVolSurface.getParameterCount();
-    for (int i = 0; i < n; ++i) {
-      System.out.println(localVolSurface.getXValues().get(i) + "\t" + localVolSurface.getYValues().get(i)
-          + "\t" + localVolSurface.getZValues().get(i));
-    }
-  }
 }
