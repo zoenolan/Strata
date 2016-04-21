@@ -10,8 +10,12 @@ import java.util.function.Function;
 import com.opengamma.strata.basics.value.ValueDerivatives;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.tuple.DoublesPair;
+import com.opengamma.strata.market.ValueType;
+import com.opengamma.strata.market.surface.DefaultSurfaceMetadata;
 import com.opengamma.strata.market.surface.DeformedSurface;
 import com.opengamma.strata.market.surface.Surface;
+import com.opengamma.strata.market.surface.SurfaceMetadata;
+import com.opengamma.strata.market.surface.SurfaceName;
 import com.opengamma.strata.math.impl.differentiation.ScalarFirstOrderDifferentiator;
 import com.opengamma.strata.math.impl.differentiation.ScalarSecondOrderDifferentiator;
 import com.opengamma.strata.math.impl.differentiation.VectorFieldFirstOrderDifferentiator;
@@ -84,7 +88,13 @@ public class DupireLocalVolatilityCalculator implements LocalVolatilityCalculato
         return ValueDerivatives.of(localVol, localVolSensi);
       }
     };
-    return DeformedSurface.of(impliedVolatilitySurface, func);
+    SurfaceMetadata metadata = DefaultSurfaceMetadata.builder()
+        .xValueType(ValueType.YEAR_FRACTION)
+        .yValueType(ValueType.STRIKE)
+        .zValueType(ValueType.LOCAL_VOLATILITY)
+        .surfaceName(SurfaceName.of("localVol_" + impliedVolatilitySurface.getName()))
+        .build();
+    return DeformedSurface.of(metadata, impliedVolatilitySurface, func);
   }
 
   @Override
@@ -128,7 +138,13 @@ public class DupireLocalVolatilityCalculator implements LocalVolatilityCalculato
         return ValueDerivatives.of(localVol, localVolSensi);
       }
     };
-    return DeformedSurface.of(callPrcieSurface, func);
+    SurfaceMetadata metadata = DefaultSurfaceMetadata.builder()
+        .xValueType(ValueType.YEAR_FRACTION)
+        .yValueType(ValueType.STRIKE)
+        .zValueType(ValueType.LOCAL_VOLATILITY)
+        .surfaceName(SurfaceName.of("localVol_" + callPrcieSurface.getName()))
+        .build();
+    return DeformedSurface.of(metadata, callPrcieSurface, func);
   }
 
 }

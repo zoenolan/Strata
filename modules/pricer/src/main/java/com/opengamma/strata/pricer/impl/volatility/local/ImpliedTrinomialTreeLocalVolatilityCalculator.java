@@ -40,6 +40,11 @@ public class ImpliedTrinomialTreeLocalVolatilityCalculator implements LocalVolat
    */
   private static final TrinomialTree TREE = new TrinomialTree();
   /**
+   * The lattice specification.
+   */
+  private static final LatticeSpecification CRR = new CoxRossRubinsteinLatticeSpecification();
+  
+  /**
    * Default interpolator and extrapolator for strike dimension. 
    */
   private static final Interpolator1D LINEAR_FLAT = CombinedInterpolatorExtrapolator.of(
@@ -139,13 +144,12 @@ public class ImpliedTrinomialTreeLocalVolatilityCalculator implements LocalVolat
         double[] putOptionPrice = new double[nNodes];
         int position = i - 1;
         double assetTmp = spot * Math.pow(upFactor, i);
-        LatticeSpecification lattice = CoxRossRubinsteinLatticeSpecification.of(i);
         // call options for upper half nodes
         for (int j = nNodes - 1; j > position - 1; --j) {
           assetPriceLocal[j] = assetTmp;
           double impliedVol = impliedVolatilitySurface.zValue(time, assetPriceLocal[j]);
-          OptionFunction call = EuropeanVanillaOptionFunction.of(assetPriceLocal[j], time, PutCall.CALL);
-          double price = TREE.optionPrice(lattice, call, spot, impliedVol, zeroRate, zeroDividendRate);
+          OptionFunction call = EuropeanVanillaOptionFunction.of(assetPriceLocal[j], time, PutCall.CALL, i);
+          double price = TREE.optionPrice(CRR, call, spot, impliedVol, zeroRate, zeroDividendRate);
           callOptionPrice[j] = price > 0d ? price : BlackScholesFormulaRepository.price(
               spot, assetPriceLocal[j], time, impliedVol, zeroRate, zeroCostRate, true);
           assetTmp *= downFactor;
@@ -155,8 +159,8 @@ public class ImpliedTrinomialTreeLocalVolatilityCalculator implements LocalVolat
         for (int j = 0; j < position + 2; ++j) {
           assetPriceLocal[j] = assetTmp;
           double impliedVol = impliedVolatilitySurface.zValue(time, assetPriceLocal[j]);
-          OptionFunction put = EuropeanVanillaOptionFunction.of(assetPriceLocal[j], time, PutCall.PUT);
-          double price = TREE.optionPrice(lattice, put, spot, impliedVol, zeroRate, zeroDividendRate);
+          OptionFunction put = EuropeanVanillaOptionFunction.of(assetPriceLocal[j], time, PutCall.PUT, i);
+          double price = TREE.optionPrice(CRR, put, spot, impliedVol, zeroRate, zeroDividendRate);
           putOptionPrice[j] = price >= 0d ? price : BlackScholesFormulaRepository.price(
               spot, assetPriceLocal[j], time, impliedVol, zeroRate, zeroCostRate, false);
           assetTmp *= upFactor;

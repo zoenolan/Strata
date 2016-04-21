@@ -1,3 +1,8 @@
+/**
+ * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
+ * 
+ * Please see distribution for license.
+ */
 package com.opengamma.strata.market.surface;
 
 import java.io.Serializable;
@@ -21,17 +26,43 @@ import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 import com.opengamma.strata.basics.value.ValueDerivatives;
 import com.opengamma.strata.collect.tuple.DoublesPair;
 
+/**
+ * The deformed surface. 
+ * <p>
+ * The deformation is applied to {@code Surface}, and defined in terms of {@code Function}, which returns z-value and 
+ * sensitivities to the nodes of the original surface.
+ * <p>
+ * Typical application of this class is to represent a surface constructed via model calibration to interpolated 
+ * market data, where the market data points and interpolation are stored in {@code originalSurface}, 
+ * and {@code deformationFunction} defines the constructed surface.
+ */
 @BeanDefinition
 public final class DeformedSurface
     implements Surface, ImmutableBean, Serializable {
 
-  // TODO need metadata of deformed surface??
-
+  /**
+   * The surface metadata.
+   * <p>
+   * The metadata includes an optional list of parameter metadata.
+   */
+  @PropertyDefinition(validate = "notNull", overrideGet = true)
+  private final SurfaceMetadata metadata;
+  /**
+   * The original surface. 
+   * <p>
+   * The underlying surface which receives the deformation defined by {@code deformationFunction}.
+   */
   @PropertyDefinition(validate = "notNull")
   private final Surface originalSurface;
-
+  /**
+   * The deformation function. 
+   * <p>
+   * The deformation to the original surface is define by this function. 
+   * The function takes {@code DoublesPair} of x-value and y-value, then returns {@code ValueDerivatives} 
+   * which contains z-value for the specified x,y values, and node sensitivities to the original surface.
+   */
   @PropertyDefinition(validate = "notNull")
-  private final Function<DoublesPair, ValueDerivatives> valueFunction;
+  private final Function<DoublesPair, ValueDerivatives> deformationFunction;
 
   //-------------------------------------------------------------------------
   @Override
@@ -41,38 +72,34 @@ public final class DeformedSurface
 
   //-------------------------------------------------------------------------
   @Override
-  public SurfaceMetadata getMetadata() {
-    return originalSurface.getMetadata();
-  }
-
-  @Override
   public double zValue(double x, double y) {
-    return zValue(DoublesPair.of(x, y));
-  }
-
-  @Override
-  public double zValue(DoublesPair xyPair) {
-    return valueFunction.apply(xyPair).getValue();
+    return deformationFunction.apply(DoublesPair.of(x, y)).getValue();
   }
 
   @Override
   public SurfaceUnitParameterSensitivity zValueParameterSensitivity(double x, double y) {
-    return zValueParameterSensitivity(DoublesPair.of(x, y));
-  }
-
-  @Override
-  public SurfaceUnitParameterSensitivity zValueParameterSensitivity(DoublesPair xyPair) {
-    return SurfaceUnitParameterSensitivity.of(getMetadata(), valueFunction.apply(xyPair).getDerivatives());
+    return SurfaceUnitParameterSensitivity.of(
+        getMetadata(), deformationFunction.apply(DoublesPair.of(x, y)).getDerivatives());
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Obtains an instance.
+   * 
+   * @param metadata  the surface metadata
+   * @param originalSurface  the original surface
+   * @param deformationFunction  the deformation function
+   * @return the surface
+   */
   public static DeformedSurface of(
+      SurfaceMetadata metadata,
       Surface originalSurface,
-      Function<DoublesPair, ValueDerivatives> valueFunction) {
+      Function<DoublesPair, ValueDerivatives> deformationFunction) {
 
     return DeformedSurface.builder()
+        .metadata(metadata)
         .originalSurface(originalSurface)
-        .valueFunction(valueFunction)
+        .deformationFunction(deformationFunction)
         .build();
   }
 
@@ -104,12 +131,15 @@ public final class DeformedSurface
   }
 
   private DeformedSurface(
+      SurfaceMetadata metadata,
       Surface originalSurface,
-      Function<DoublesPair, ValueDerivatives> valueFunction) {
+      Function<DoublesPair, ValueDerivatives> deformationFunction) {
+    JodaBeanUtils.notNull(metadata, "metadata");
     JodaBeanUtils.notNull(originalSurface, "originalSurface");
-    JodaBeanUtils.notNull(valueFunction, "valueFunction");
+    JodaBeanUtils.notNull(deformationFunction, "deformationFunction");
+    this.metadata = metadata;
     this.originalSurface = originalSurface;
-    this.valueFunction = valueFunction;
+    this.deformationFunction = deformationFunction;
   }
 
   @Override
@@ -129,7 +159,21 @@ public final class DeformedSurface
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the originalSurface.
+   * Gets the surface metadata.
+   * <p>
+   * The metadata includes an optional list of parameter metadata.
+   * @return the value of the property, not null
+   */
+  @Override
+  public SurfaceMetadata getMetadata() {
+    return metadata;
+  }
+
+  //-----------------------------------------------------------------------
+  /**
+   * Gets the original surface.
+   * <p>
+   * The underlying surface which receives the deformation defined by {@code deformationFunction}.
    * @return the value of the property, not null
    */
   public Surface getOriginalSurface() {
@@ -138,11 +182,15 @@ public final class DeformedSurface
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the valueFunction.
+   * Gets the deformation function.
+   * <p>
+   * The deformation to the original surface is define by this function.
+   * The function takes {@code DoublesPair} of x-value and y-value, then returns {@code ValueDerivatives}
+   * which contains z-value for the specified x,y values, and node sensitivities to the original surface.
    * @return the value of the property, not null
    */
-  public Function<DoublesPair, ValueDerivatives> getValueFunction() {
-    return valueFunction;
+  public Function<DoublesPair, ValueDerivatives> getDeformationFunction() {
+    return deformationFunction;
   }
 
   //-----------------------------------------------------------------------
@@ -161,8 +209,9 @@ public final class DeformedSurface
     }
     if (obj != null && obj.getClass() == this.getClass()) {
       DeformedSurface other = (DeformedSurface) obj;
-      return JodaBeanUtils.equal(originalSurface, other.originalSurface) &&
-          JodaBeanUtils.equal(valueFunction, other.valueFunction);
+      return JodaBeanUtils.equal(metadata, other.metadata) &&
+          JodaBeanUtils.equal(originalSurface, other.originalSurface) &&
+          JodaBeanUtils.equal(deformationFunction, other.deformationFunction);
     }
     return false;
   }
@@ -170,17 +219,19 @@ public final class DeformedSurface
   @Override
   public int hashCode() {
     int hash = getClass().hashCode();
+    hash = hash * 31 + JodaBeanUtils.hashCode(metadata);
     hash = hash * 31 + JodaBeanUtils.hashCode(originalSurface);
-    hash = hash * 31 + JodaBeanUtils.hashCode(valueFunction);
+    hash = hash * 31 + JodaBeanUtils.hashCode(deformationFunction);
     return hash;
   }
 
   @Override
   public String toString() {
-    StringBuilder buf = new StringBuilder(96);
+    StringBuilder buf = new StringBuilder(128);
     buf.append("DeformedSurface{");
+    buf.append("metadata").append('=').append(metadata).append(',').append(' ');
     buf.append("originalSurface").append('=').append(originalSurface).append(',').append(' ');
-    buf.append("valueFunction").append('=').append(JodaBeanUtils.toString(valueFunction));
+    buf.append("deformationFunction").append('=').append(JodaBeanUtils.toString(deformationFunction));
     buf.append('}');
     return buf.toString();
   }
@@ -196,23 +247,29 @@ public final class DeformedSurface
     static final Meta INSTANCE = new Meta();
 
     /**
+     * The meta-property for the {@code metadata} property.
+     */
+    private final MetaProperty<SurfaceMetadata> metadata = DirectMetaProperty.ofImmutable(
+        this, "metadata", DeformedSurface.class, SurfaceMetadata.class);
+    /**
      * The meta-property for the {@code originalSurface} property.
      */
     private final MetaProperty<Surface> originalSurface = DirectMetaProperty.ofImmutable(
         this, "originalSurface", DeformedSurface.class, Surface.class);
     /**
-     * The meta-property for the {@code valueFunction} property.
+     * The meta-property for the {@code deformationFunction} property.
      */
     @SuppressWarnings({"unchecked", "rawtypes" })
-    private final MetaProperty<Function<DoublesPair, ValueDerivatives>> valueFunction = DirectMetaProperty.ofImmutable(
-        this, "valueFunction", DeformedSurface.class, (Class) Function.class);
+    private final MetaProperty<Function<DoublesPair, ValueDerivatives>> deformationFunction = DirectMetaProperty.ofImmutable(
+        this, "deformationFunction", DeformedSurface.class, (Class) Function.class);
     /**
      * The meta-properties.
      */
     private final Map<String, MetaProperty<?>> metaPropertyMap$ = new DirectMetaPropertyMap(
         this, null,
+        "metadata",
         "originalSurface",
-        "valueFunction");
+        "deformationFunction");
 
     /**
      * Restricted constructor.
@@ -223,10 +280,12 @@ public final class DeformedSurface
     @Override
     protected MetaProperty<?> metaPropertyGet(String propertyName) {
       switch (propertyName.hashCode()) {
+        case -450004177:  // metadata
+          return metadata;
         case 1982430620:  // originalSurface
           return originalSurface;
-        case 636119145:  // valueFunction
-          return valueFunction;
+        case -360086200:  // deformationFunction
+          return deformationFunction;
       }
       return super.metaPropertyGet(propertyName);
     }
@@ -248,6 +307,14 @@ public final class DeformedSurface
 
     //-----------------------------------------------------------------------
     /**
+     * The meta-property for the {@code metadata} property.
+     * @return the meta-property, not null
+     */
+    public MetaProperty<SurfaceMetadata> metadata() {
+      return metadata;
+    }
+
+    /**
      * The meta-property for the {@code originalSurface} property.
      * @return the meta-property, not null
      */
@@ -256,21 +323,23 @@ public final class DeformedSurface
     }
 
     /**
-     * The meta-property for the {@code valueFunction} property.
+     * The meta-property for the {@code deformationFunction} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<Function<DoublesPair, ValueDerivatives>> valueFunction() {
-      return valueFunction;
+    public MetaProperty<Function<DoublesPair, ValueDerivatives>> deformationFunction() {
+      return deformationFunction;
     }
 
     //-----------------------------------------------------------------------
     @Override
     protected Object propertyGet(Bean bean, String propertyName, boolean quiet) {
       switch (propertyName.hashCode()) {
+        case -450004177:  // metadata
+          return ((DeformedSurface) bean).getMetadata();
         case 1982430620:  // originalSurface
           return ((DeformedSurface) bean).getOriginalSurface();
-        case 636119145:  // valueFunction
-          return ((DeformedSurface) bean).getValueFunction();
+        case -360086200:  // deformationFunction
+          return ((DeformedSurface) bean).getDeformationFunction();
       }
       return super.propertyGet(bean, propertyName, quiet);
     }
@@ -292,8 +361,9 @@ public final class DeformedSurface
    */
   public static final class Builder extends DirectFieldsBeanBuilder<DeformedSurface> {
 
+    private SurfaceMetadata metadata;
     private Surface originalSurface;
-    private Function<DoublesPair, ValueDerivatives> valueFunction;
+    private Function<DoublesPair, ValueDerivatives> deformationFunction;
 
     /**
      * Restricted constructor.
@@ -306,18 +376,21 @@ public final class DeformedSurface
      * @param beanToCopy  the bean to copy from, not null
      */
     private Builder(DeformedSurface beanToCopy) {
+      this.metadata = beanToCopy.getMetadata();
       this.originalSurface = beanToCopy.getOriginalSurface();
-      this.valueFunction = beanToCopy.getValueFunction();
+      this.deformationFunction = beanToCopy.getDeformationFunction();
     }
 
     //-----------------------------------------------------------------------
     @Override
     public Object get(String propertyName) {
       switch (propertyName.hashCode()) {
+        case -450004177:  // metadata
+          return metadata;
         case 1982430620:  // originalSurface
           return originalSurface;
-        case 636119145:  // valueFunction
-          return valueFunction;
+        case -360086200:  // deformationFunction
+          return deformationFunction;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
@@ -327,11 +400,14 @@ public final class DeformedSurface
     @Override
     public Builder set(String propertyName, Object newValue) {
       switch (propertyName.hashCode()) {
+        case -450004177:  // metadata
+          this.metadata = (SurfaceMetadata) newValue;
+          break;
         case 1982430620:  // originalSurface
           this.originalSurface = (Surface) newValue;
           break;
-        case 636119145:  // valueFunction
-          this.valueFunction = (Function<DoublesPair, ValueDerivatives>) newValue;
+        case -360086200:  // deformationFunction
+          this.deformationFunction = (Function<DoublesPair, ValueDerivatives>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -366,13 +442,29 @@ public final class DeformedSurface
     @Override
     public DeformedSurface build() {
       return new DeformedSurface(
+          metadata,
           originalSurface,
-          valueFunction);
+          deformationFunction);
     }
 
     //-----------------------------------------------------------------------
     /**
-     * Sets the originalSurface.
+     * Sets the surface metadata.
+     * <p>
+     * The metadata includes an optional list of parameter metadata.
+     * @param metadata  the new value, not null
+     * @return this, for chaining, not null
+     */
+    public Builder metadata(SurfaceMetadata metadata) {
+      JodaBeanUtils.notNull(metadata, "metadata");
+      this.metadata = metadata;
+      return this;
+    }
+
+    /**
+     * Sets the original surface.
+     * <p>
+     * The underlying surface which receives the deformation defined by {@code deformationFunction}.
      * @param originalSurface  the new value, not null
      * @return this, for chaining, not null
      */
@@ -383,23 +475,28 @@ public final class DeformedSurface
     }
 
     /**
-     * Sets the valueFunction.
-     * @param valueFunction  the new value, not null
+     * Sets the deformation function.
+     * <p>
+     * The deformation to the original surface is define by this function.
+     * The function takes {@code DoublesPair} of x-value and y-value, then returns {@code ValueDerivatives}
+     * which contains z-value for the specified x,y values, and node sensitivities to the original surface.
+     * @param deformationFunction  the new value, not null
      * @return this, for chaining, not null
      */
-    public Builder valueFunction(Function<DoublesPair, ValueDerivatives> valueFunction) {
-      JodaBeanUtils.notNull(valueFunction, "valueFunction");
-      this.valueFunction = valueFunction;
+    public Builder deformationFunction(Function<DoublesPair, ValueDerivatives> deformationFunction) {
+      JodaBeanUtils.notNull(deformationFunction, "deformationFunction");
+      this.deformationFunction = deformationFunction;
       return this;
     }
 
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(96);
+      StringBuilder buf = new StringBuilder(128);
       buf.append("DeformedSurface.Builder{");
+      buf.append("metadata").append('=').append(JodaBeanUtils.toString(metadata)).append(',').append(' ');
       buf.append("originalSurface").append('=').append(JodaBeanUtils.toString(originalSurface)).append(',').append(' ');
-      buf.append("valueFunction").append('=').append(JodaBeanUtils.toString(valueFunction));
+      buf.append("deformationFunction").append('=').append(JodaBeanUtils.toString(deformationFunction));
       buf.append('}');
       return buf.toString();
     }

@@ -98,7 +98,7 @@ public class ImpliedTrinomialTreeLocalVolatilityCalculatorTest {
         return ValueDerivatives.of(price, DoubleArray.EMPTY);
       }
     };
-    DeformedSurface priceSurface = DeformedSurface.of(impliedVolSurface, func);
+    DeformedSurface priceSurface = DeformedSurface.of(DefaultSurfaceMetadata.of("price"), impliedVolSurface, func);
     ImpliedTrinomialTreeLocalVolatilityCalculator calc = new ImpliedTrinomialTreeLocalVolatilityCalculator(
         nSteps, maxTime, new GridInterpolator2D(TIMESQ_FLAT, LINEAR_FLAT));
     InterpolatedNodalSurface localVolSurface = calc.localVolatilityFromPrice(priceSurface, spot, zeroRate, zeroRate);
