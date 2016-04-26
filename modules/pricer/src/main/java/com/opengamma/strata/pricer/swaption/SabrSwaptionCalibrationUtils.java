@@ -73,6 +73,7 @@ public class SabrSwaptionCalibrationUtils {
   public SabrSwaptionCalibrationUtils(
       VolatilityFunctionProvider<SabrFormulaData> sabrFunctionProvider,
       DiscountingSwapProductPricer swapPricer) {
+    
     this.sabrFunctionProvider = sabrFunctionProvider;
     this.swapPricer = swapPricer;
   }
@@ -104,6 +105,7 @@ public class SabrSwaptionCalibrationUtils {
       NodalSurface betaSurface,
       NodalSurface shiftSurface, 
       GridInterpolator2D interpolator) {
+    
     BitSet fixed = new BitSet();
     fixed.set(1); // Beta fixed
     int nbTenors = tenors.size();
@@ -120,13 +122,11 @@ public class SabrSwaptionCalibrationUtils {
           + tenors.get(looptenor).getPeriod().getMonths() / 12;
       List<Period> expiries = data.get(looptenor).getExpiries();
       int nbExpiries = expiries.size();
-      for (int loopexpiry = 0; loopexpiry < nbExpiries; loopexpiry++) {
-        
+      for (int loopexpiry = 0; loopexpiry < nbExpiries; loopexpiry++) {        
         Pair<DoubleArray, DoubleArray> availableSmile = data.get(looptenor).availableSmileAtExpiry(expiries.get(loopexpiry));
         if(availableSmile.getFirst().size() == 0) { // If not data is available, no calibration possible
           continue; 
-        }
-        
+        }        
         LocalDate exerciseDate = expirationDate(bda, calibrationDate, expiries.get(loopexpiry));
         LocalDate effectiveDate = convention.calculateSpotDateFromTradeDate(exerciseDate, REF_DATA);
         double timeToExpiry = dayCount.relativeYearFraction(calibrationDate, exerciseDate);
@@ -177,6 +177,8 @@ public class SabrSwaptionCalibrationUtils {
         convention, calibrationDateTime, dayCount);
   }
 
+  // The main part of the calibration. The calibration is done 4 times with different starting points: low and high
+  // volatilities and high and low vol of vol. The best result (in therm of chi^2) is returned.
   private SabrFormulaData calibration(double forward, double shift, double beta, BitSet fixed,
       BusinessDayAdjustment bda, ZonedDateTime calibrationDateTime, DayCount dayCount,
       DoubleArray strike, DoubleArray data, Period expiry, RawOptionData rawData) {
@@ -220,9 +222,7 @@ public class SabrSwaptionCalibrationUtils {
         sabrPoint = SabrFormulaData.of(r.getModelParameters().toArrayUnsafe());
         chi2 = r.getChiSq();
       }
-//      System.out.println(expiry.toString() + " -> " + i + ", " + r.getChiSq()); // TODO: remove after testing
     }
-//    System.out.println(expiry.toString() + " -> Final" + ", " + chi2); // TODO: remove after testing
     return sabrPoint;
   }
 
@@ -258,6 +258,7 @@ public class SabrSwaptionCalibrationUtils {
       DoubleArray startParameters, 
       BitSet fixedParameters,
       double shiftOutput) {
+    
     int nbStrikes = strikesLike.size();
     ArgChecker.isTrue(nbStrikes == blackVolatilitiesInput.size(), "size of strikes must be the same as size of volatilities");
     LocalDate calibrationDate = calibrationDateTime.toLocalDate();
@@ -292,7 +293,8 @@ public class SabrSwaptionCalibrationUtils {
       DoubleArray strikes,
       DoubleArray blackVolatilities,
       double shiftInput) {
-    if(shiftInput == shiftOutput) { // FIXME: improve comparison between shifts
+    
+    if(shiftInput == shiftOutput) {
       return blackVolatilities; // No change required if shifts are the same
     }
     int nbStrikes = strikes.size();
@@ -301,7 +303,7 @@ public class SabrSwaptionCalibrationUtils {
       double price = BlackFormulaRepository.price(
           forward + shiftInput, strikes.get(i) + shiftInput, timeToExpiry, blackVolatilities.get(i), true);
       bv[i] = BlackFormulaRepository.impliedVolatility(
-          price, forward + shiftOutput, strikes.get(i) + shiftOutput, timeToExpiry, true); // FIXME: improve translation
+          price, forward + shiftOutput, strikes.get(i) + shiftOutput, timeToExpiry, true);
     }
     return DoubleArray.ofUnsafe(bv);
   }
@@ -336,6 +338,7 @@ public class SabrSwaptionCalibrationUtils {
       DoubleArray startParameters, 
       BitSet fixedParameters,
       double shiftOutput) {
+    
     int nbStrikes = strikesLike.size();
     ArgChecker.isTrue(nbStrikes == prices.size(), "size of strikes must be the same as size of prices");
     LocalDate calibrationDate = calibrationDateTime.toLocalDate();
@@ -368,6 +371,7 @@ public class SabrSwaptionCalibrationUtils {
       double timeToExpiry, 
       DoubleArray strikes,
       DoubleArray prices) {
+    
     int nbStrikes = strikes.size();
     double[] bv = new double[nbStrikes];
     for (int i = 0; i < nbStrikes; i++) {
@@ -407,6 +411,7 @@ public class SabrSwaptionCalibrationUtils {
       DoubleArray startParameters, 
       BitSet fixedParameters,
       double shiftOutput) {
+    
     int nbStrikes = strikesLike.size();
     ArgChecker.isTrue(nbStrikes == normalVolatilities.size(), "size of strikes must be the same as size of prices");
     LocalDate calibrationDate = calibrationDateTime.toLocalDate();
@@ -443,6 +448,7 @@ public class SabrSwaptionCalibrationUtils {
       double timeToExpiry, 
       DoubleArray strikes,
       DoubleArray normalVolatilities) {
+    
     int nbStrikes = strikes.size();
     double[] bv = new double[nbStrikes];
     for (int i = 0; i < nbStrikes; i++) {
@@ -496,6 +502,7 @@ public class SabrSwaptionCalibrationUtils {
       BusinessDayAdjustment bda,
       LocalDate calibrationDate, 
       Period expiry) {
+    
     return bda.adjust(calibrationDate.plus(expiry), REF_DATA);
   }
 
