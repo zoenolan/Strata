@@ -19,6 +19,7 @@ import com.opengamma.strata.basics.date.DayCount;
 import com.opengamma.strata.basics.date.Tenor;
 import com.opengamma.strata.basics.market.ReferenceData;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.tuple.Pair;
 import com.opengamma.strata.market.ValueType;
@@ -29,6 +30,7 @@ import com.opengamma.strata.market.surface.SurfaceMetadata;
 import com.opengamma.strata.market.surface.SurfaceName;
 import com.opengamma.strata.market.surface.SurfaceParameterMetadata;
 import com.opengamma.strata.market.surface.meta.SwaptionSurfaceExpiryTenorNodeMetadata;
+import com.opengamma.strata.math.impl.MathException;
 import com.opengamma.strata.math.impl.interpolation.GridInterpolator2D;
 import com.opengamma.strata.math.impl.statistics.leastsquare.LeastSquareResultsWithTransform;
 import com.opengamma.strata.pricer.impl.option.BlackFormulaRepository;
@@ -106,6 +108,9 @@ public class SabrSwaptionCalibrationUtils {
       NodalSurface shiftSurface, 
       GridInterpolator2D interpolator) {
     
+    boolean stopOnMathException = true;
+    // If a MathException is thrown by a calibration, 'true' throws the calibration, 
+    // 'false' skip the expiry/tenor combination
     BitSet fixed = new BitSet();
     fixed.set(1); // Beta fixed
     int nbTenors = tenors.size();
@@ -117,16 +122,16 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray rhoArray = DoubleArray.EMPTY;
     DoubleArray nuArray = DoubleArray.EMPTY;
     List<SurfaceParameterMetadata> parameterMetadata = new ArrayList<>();
-    for (int looptenor = 0; looptenor < nbTenors; looptenor++) {
+    for (int looptenor = 2; looptenor < nbTenors; looptenor++) {
       double timeTenor = tenors.get(looptenor).getPeriod().getYears() 
           + tenors.get(looptenor).getPeriod().getMonths() / 12;
       List<Period> expiries = data.get(looptenor).getExpiries();
       int nbExpiries = expiries.size();
-      for (int loopexpiry = 0; loopexpiry < nbExpiries; loopexpiry++) {        
+      for (int loopexpiry = 14; loopexpiry < nbExpiries; loopexpiry++) {
         Pair<DoubleArray, DoubleArray> availableSmile = data.get(looptenor).availableSmileAtExpiry(expiries.get(loopexpiry));
-        if(availableSmile.getFirst().size() == 0) { // If not data is available, no calibration possible
-          continue; 
-        }        
+        if (availableSmile.getFirst().size() == 0) { // If not data is available, no calibration possible
+          continue;
+        }
         LocalDate exerciseDate = expirationDate(bda, calibrationDate, expiries.get(loopexpiry));
         LocalDate effectiveDate = convention.calculateSpotDateFromTradeDate(exerciseDate, REF_DATA);
         double timeToExpiry = dayCount.relativeYearFraction(calibrationDate, exerciseDate);
@@ -135,17 +140,28 @@ public class SabrSwaptionCalibrationUtils {
         LocalDate endDate = effectiveDate.plus(tenors.get(looptenor));
         SwapTrade swap0 = convention.toTrade(calibrationDate, effectiveDate, endDate, BuySell.BUY, 1.0, 0.0);
         double forward = swapPricer.parRate(swap0.getProduct().resolve(REF_DATA), ratesProvider);
-        timeToExpiryArray = timeToExpiryArray.concat(new double[] {timeToExpiry });
-        timeTenorArray = timeTenorArray.concat(new double[] {timeTenor });
-        
-        SabrFormulaData sabrPoint = calibration(forward, shift, beta, fixed, bda, calibrationDateTime, dayCount, 
-            availableSmile.getFirst(), availableSmile.getSecond(), expiries.get(loopexpiry), data.get(looptenor));
-        
-        alphaArray = alphaArray.concat(new double[] {sabrPoint.getAlpha()});
-        rhoArray = rhoArray.concat(new double[] {sabrPoint.getRho()});
-        nuArray = nuArray.concat(new double[] {sabrPoint.getNu()});
-        parameterMetadata.add(SwaptionSurfaceExpiryTenorNodeMetadata.of(timeToExpiry, timeTenor, 
-            expiries.get(loopexpiry).toString() + "x" + tenors.get(looptenor).toString()));
+        SabrFormulaData sabrPoint = null;
+        boolean error = false;
+        try {
+          sabrPoint = calibration(forward, shift, beta, fixed, bda, calibrationDateTime, dayCount,
+              availableSmile.getFirst(), availableSmile.getSecond(), expiries.get(loopexpiry), data.get(looptenor));
+        } catch (MathException e) {
+          error = true;
+          if (stopOnMathException) {
+            String message = Messages.format("{} at expiry {} and tenor {}", e.getMessage(),
+                expiries.get(loopexpiry), tenors.get(looptenor));
+            throw new MathException(message, e);
+          }
+        }
+        if (!error) {
+          timeToExpiryArray = timeToExpiryArray.concat(new double[] {timeToExpiry });
+          timeTenorArray = timeTenorArray.concat(new double[] {timeTenor });
+          alphaArray = alphaArray.concat(new double[] {sabrPoint.getAlpha() });
+          rhoArray = rhoArray.concat(new double[] {sabrPoint.getRho() });
+          nuArray = nuArray.concat(new double[] {sabrPoint.getNu() });
+          parameterMetadata.add(SwaptionSurfaceExpiryTenorNodeMetadata.of(timeToExpiry, timeTenor,
+              expiries.get(loopexpiry).toString() + "x" + tenors.get(looptenor).toString()));
+        }
       }
     }
     SurfaceMetadata metadataAlpha = DefaultSurfaceMetadata.builder().dayCount(dayCount)
@@ -408,10 +424,10 @@ public class SabrSwaptionCalibrationUtils {
       DoubleArray strikesLike,
       ValueType strikeType,
       DoubleArray normalVolatilities,
-      DoubleArray startParameters, 
+      DoubleArray startParameters,
       BitSet fixedParameters,
       double shiftOutput) {
-    
+
     int nbStrikes = strikesLike.size();
     ArgChecker.isTrue(nbStrikes == normalVolatilities.size(), "size of strikes must be the same as size of prices");
     LocalDate calibrationDate = calibrationDateTime.toLocalDate();
@@ -425,7 +441,8 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray strikesShifted = strikesShifted(forward, shiftOutput, strikesLike, strikeType);
     SabrModelFitter fitter = new SabrModelFitter(forward + shiftOutput, strikesShifted, timeToExpiry,
         blackVolatilitiesTransformed, DoubleArray.ofUnsafe(errors), sabrFunctionProvider);
-    return fitter.solve(startParameters, fixedParameters);
+    LeastSquareResultsWithTransform result = fitter.solve(startParameters, fixedParameters);
+    return result;
   }
 
   
