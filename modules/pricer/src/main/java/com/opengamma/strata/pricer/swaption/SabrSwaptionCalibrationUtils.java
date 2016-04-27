@@ -122,12 +122,12 @@ public class SabrSwaptionCalibrationUtils {
     DoubleArray rhoArray = DoubleArray.EMPTY;
     DoubleArray nuArray = DoubleArray.EMPTY;
     List<SurfaceParameterMetadata> parameterMetadata = new ArrayList<>();
-    for (int looptenor = 2; looptenor < nbTenors; looptenor++) {
+    for (int looptenor = 0; looptenor < nbTenors; looptenor++) {
       double timeTenor = tenors.get(looptenor).getPeriod().getYears() 
           + tenors.get(looptenor).getPeriod().getMonths() / 12;
       List<Period> expiries = data.get(looptenor).getExpiries();
       int nbExpiries = expiries.size();
-      for (int loopexpiry = 14; loopexpiry < nbExpiries; loopexpiry++) {
+      for (int loopexpiry = 0; loopexpiry < nbExpiries; loopexpiry++) {
         Pair<DoubleArray, DoubleArray> availableSmile = data.get(looptenor).availableSmileAtExpiry(expiries.get(loopexpiry));
         if (availableSmile.getFirst().size() == 0) { // If not data is available, no calibration possible
           continue;
